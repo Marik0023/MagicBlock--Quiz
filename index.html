@@ -13,7 +13,6 @@
 </head>
 
 <body>
-  <!-- BACKGROUND VIDEO -->
   <div class="bg" aria-hidden="true">
     <video class="bg__video" autoplay muted loop playsinline preload="auto">
       <source src="https://cdn.prod.website-files.com/67dd3f471f62a240dd544dd8%2F67dd41b5485dd4cf31eee3c0_Home_Beams-transcode.mp4" type="video/mp4">
@@ -22,12 +21,11 @@
   </div>
 
   <header class="topbar">
-    <div class="brand" aria-label="MagicBlock">
+    <div class="brand">
       <video class="brand__logo" autoplay muted loop playsinline preload="auto">
         <source src="./assets/logo.webm" type="video/webm">
         <source src="./assets/logo.mp4" type="video/mp4">
       </video>
-      <span class="brand__name">MagicBlock</span>
     </div>
   </header>
 
@@ -38,32 +36,40 @@
     </section>
 
     <section class="grid" aria-label="Quiz selection">
-      <!-- SONG -->
       <article class="card" id="card-song">
         <h2 class="card__title">Quiz 1</h2>
         <div class="badge" data-badge="song">✓ Completed</div>
         <p class="card__headline">Guess the Song by the Melody</p>
-        <p class="card__text">10 questions • A/B/C/D • wrong answer skips forward.</p>
-        <a class="btn start" data-start="song" href="./quizzes/song.html">Start</a>
+        <p class="card__text">10 questions • A/B/C/D</p>
+        <a class="btn" data-start="song" href="./quizzes/song.html">Start</a>
       </article>
 
-      <!-- MOVIE -->
       <article class="card" id="card-movie">
         <h2 class="card__title">Quiz 2</h2>
         <div class="badge" data-badge="movie">✓ Completed</div>
         <p class="card__headline">Guess the Movie by the Frame</p>
-        <p class="card__text">10 questions • A/B/C/D • wrong answer skips forward.</p>
-        <a class="btn start" data-start="movie" href="./quizzes/movie.html">Start</a>
+        <p class="card__text">10 questions • A/B/C/D</p>
+        <a class="btn" data-start="movie" href="./quizzes/movie.html">Start</a>
       </article>
 
-      <!-- MAGICBLOCK -->
       <article class="card" id="card-magicblock">
         <h2 class="card__title">Quiz 3</h2>
         <div class="badge" data-badge="magicblock">✓ Completed</div>
         <p class="card__headline">How Well Do You Know MagicBlock?</p>
-        <p class="card__text">10 questions • A/B/C/D • wrong answer skips forward.</p>
-        <a class="btn start" data-start="magicblock" href="./quizzes/magicblock.html">Start</a>
+        <p class="card__text">10 questions • A/B/C/D</p>
+        <a class="btn" data-start="magicblock" href="./quizzes/magicblock.html">Start</a>
       </article>
+    </section>
+
+    <!-- ✅ Champion CTA (показується лише якщо всі 3 completed) -->
+    <section id="championWrap" style="display:none; margin-top:16px;">
+      <div class="card">
+        <h2 class="card__title">Bonus</h2>
+        <div class="badge" style="display:inline-flex;">✓ Unlocked</div>
+        <p class="card__headline">Champion Card</p>
+        <p class="card__text">You completed all 3 quizzes. Claim your champion card.</p>
+        <a class="btn" href="./champion.html">Get Champion Card</a>
+      </div>
     </section>
 
     <footer class="footer">
