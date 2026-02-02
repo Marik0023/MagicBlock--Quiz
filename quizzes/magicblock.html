@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quiz 3 • MagicBlock Knowledge</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+
+<body>
+  <!-- BACKGROUND VIDEO -->
+  <div class="bg" aria-hidden="true">
+    <video class="bg__video" autoplay muted loop playsinline preload="auto">
+      <source src="https://cdn.prod.website-files.com/67dd3f471f62a240dd544dd8%2F67dd41b5485dd4cf31eee3c0_Home_Beams-transcode.mp4" type="video/mp4">
+    </video>
+    <div class="bg__vignette"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <video class="brand__logo" autoplay muted loop playsinline preload="auto">
+        <source src="../assets/logo.webm" type="video/webm">
+      </video>
+      <span class="brand__name">MagicBlock</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card" style="max-width:900px;margin:0 auto;">
+      <h1 style="margin:0;font-size:32px;">How Well Do You Know MagicBlock?</h1>
+      <p style="color:rgba(255,255,255,.74);line-height:1.5;margin-top:10px;">
+        Multiple choice quiz.
+      </p>
+
+      <p id="status" style="margin-top:12px;color:rgba(255,255,255,.70);">Question 1</p>
+
+      <p id="qtext" style="margin:10px 0 0;font-size:18px;font-weight:800;"></p>
+
+      <div id="choices" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;"></div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+        <button id="next" class="btn" type="button" style="display:none;">Next</button>
+        <a class="btn" href="../index.html">← Back</a>
+      </div>
+
+      <p id="score" style="margin-top:12px;color:rgba(255,255,255,.70);">Score: 0 / 0</p>
+    </section>
+  </main>
+
+  <script src="./magicblock.js"></script>
+  <script src="../app.js"></script>
+</body>
+</html>
