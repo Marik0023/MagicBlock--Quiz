@@ -1,4 +1,4 @@
-// ====== Helpers (shared via copy on each page where needed) ======
+// ====== Helpers (shared) ======
 const MB_KEYS = {
   profile: "mb_profile",
   doneSong: "mb_done_song",
@@ -19,6 +19,7 @@ function getProfile(){
 function setProfile(profile){
   localStorage.setItem(MB_KEYS.profile, JSON.stringify(profile));
 }
+
 function forcePlayAll(selector){
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
@@ -59,7 +60,7 @@ function renderTopProfile(){
   if (hintEl) hintEl.textContent = "Edit";
 }
 
-// ====== Profile modal logic (index page) ======
+// ====== Profile modal logic (home) ======
 function openProfileModal(force = false){
   const modal = document.getElementById("profileModal");
   if (!modal) return;
@@ -69,7 +70,6 @@ function openProfileModal(force = false){
   const nameInput = document.getElementById("profileName");
   const fileInput = document.getElementById("profileFile");
   const preview = document.getElementById("profilePreview");
-  const startBtn = document.getElementById("profileSaveBtn");
 
   if (nameInput) nameInput.value = p?.name || "";
   if (preview) preview.src = p?.avatar || "";
@@ -79,10 +79,6 @@ function openProfileModal(force = false){
   const closeBtn = document.getElementById("profileCloseBtn");
   if (closeBtn){
     closeBtn.style.display = (force && !p) ? "none" : "flex";
-  }
-
-  if (startBtn){
-    startBtn.disabled = false;
   }
 }
 
@@ -114,7 +110,9 @@ function initProfileModal(){
   saveBtn?.addEventListener("click", () => {
     const pOld = getProfile() || {};
     const name = (nameInput?.value || "").trim() || "Player";
-    const avatar = (preview?.src || "").startsWith("data:") ? preview.src : (pOld.avatar || "");
+    const avatar = (preview?.src || "").startsWith("data:")
+      ? preview.src
+      : (pOld.avatar || "");
 
     setProfile({ name, avatar });
     renderTopProfile();
@@ -186,3 +184,9 @@ const mustCreate = document.body.getAttribute("data-require-profile") === "1";
 if (mustCreate && !getProfile()){
   openProfileModal(true);
 }
+
+// Якщо ти відкрив 2 вкладки — хай бейджі оновляться
+window.addEventListener("storage", () => {
+  renderTopProfile();
+  updateBadges();
+});
