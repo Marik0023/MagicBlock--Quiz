@@ -750,3 +750,12 @@ img{max-width:100%; display:block}
   40%{ transform: translateX(-170%); } /* пауза */
   100%{ transform: translateX(170%); }
 }
+
+/* ===== FORCE: make shine 3x slower (Champion preview) ===== */
+.cardZone.isOpen .cardPreview::before{
+  animation-duration: 22.8s !important; /* було 7.6s */
+}
+
+.cardZone.isOpen .cardPreview::after{
+  animation-duration: 24.3s !important; /* було 8.1s */
+}
