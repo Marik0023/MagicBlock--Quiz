@@ -2,29 +2,32 @@ const DONE_KEY  = "mb_done_movie";
 const SCORE_KEY = "mb_score_movie";
 const TOTAL_KEY = "mb_total_movie";
 const WHEN_KEY  = "mb_when_movie";
-const NAME_KEY  = "mb_name_movie";
-const AVATAR_KEY= "mb_avatar_movie";
+
+const PROFILE_NAME_KEY = "mb_profile_name";
+const PROFILE_AVATAR_KEY = "mb_profile_avatar";
 
 const letters = ["A", "B", "C", "D"];
 
+// Put your images into: /assets/movies/
+// Example names: 01.jpg ... 10.jpg (or .png)
 const questions = [
-  { src: "../assets/movies/01.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
-  { src: "../assets/movies/02.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
-  { src: "../assets/movies/03.jpg", choices: ["Wrong", "Wrong", "Correct (edit me)", "Wrong"], correctIndex: 2 },
-  { src: "../assets/movies/04.jpg", choices: ["Wrong", "Wrong", "Wrong", "Correct (edit me)"], correctIndex: 3 },
-  { src: "../assets/movies/05.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
-  { src: "../assets/movies/06.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
-  { src: "../assets/movies/07.jpg", choices: ["Wrong", "Wrong", "Correct (edit me)", "Wrong"], correctIndex: 2 },
-  { src: "../assets/movies/08.jpg", choices: ["Wrong", "Wrong", "Wrong", "Correct (edit me)"], correctIndex: 3 },
-  { src: "../assets/movies/09.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
-  { src: "../assets/movies/10.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
+  { frame: "../assets/movies/01.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
+  { frame: "../assets/movies/02.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
+  { frame: "../assets/movies/03.jpg", choices: ["Wrong", "Wrong", "Correct (edit me)", "Wrong"], correctIndex: 2 },
+  { frame: "../assets/movies/04.jpg", choices: ["Wrong", "Wrong", "Wrong", "Correct (edit me)"], correctIndex: 3 },
+  { frame: "../assets/movies/05.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
+  { frame: "../assets/movies/06.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
+  { frame: "../assets/movies/07.jpg", choices: ["Wrong", "Wrong", "Correct (edit me)", "Wrong"], correctIndex: 2 },
+  { frame: "../assets/movies/08.jpg", choices: ["Wrong", "Wrong", "Wrong", "Correct (edit me)"], correctIndex: 3 },
+  { frame: "../assets/movies/09.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
+  { frame: "../assets/movies/10.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
 ];
 
 let idx = 0;
 let correct = 0;
 let selectedIndex = null;
 
-const frame = document.getElementById("frame");
+const frameEl = document.getElementById("frame");
 const choicesEl = document.getElementById("choices");
 const statusEl = document.getElementById("status");
 const nextBtn = document.getElementById("next");
@@ -38,21 +41,13 @@ const rTotal = document.getElementById("rTotal");
 const rCorrect = document.getElementById("rCorrect");
 const rWrong = document.getElementById("rWrong");
 const rPercent = document.getElementById("rPercent");
-const rWhen = document.getElementById("rWhen");
+const resultWhen = document.getElementById("resultWhen");
+const resultName = document.getElementById("resultName");
+const resultAvatar = document.getElementById("resultAvatar");
 
-const playerName = document.getElementById("playerName");
-const avatarFile = document.getElementById("avatarFile");
-const avatarPreview = document.getElementById("avatarPreview");
+const genCardBtn = document.getElementById("genCard");
 
 function nowText(){ return new Date().toLocaleString(); }
-
-function loadProfile(){
-  playerName.value = localStorage.getItem(NAME_KEY) || "";
-  avatarPreview.src = localStorage.getItem(AVATAR_KEY) || "";
-}
-function saveProfile(){
-  localStorage.setItem(NAME_KEY, playerName.value || "");
-}
 
 function setNextText(){
   nextBtn.textContent = (idx === questions.length - 1) ? "Finish →" : "Next →";
@@ -78,7 +73,7 @@ function render(){
   nextBtn.style.display = "none";
   nextBtn.classList.remove("is-pop");
 
-  frame.src = q.src;
+  frameEl.src = q.frame;
 
   choicesEl.innerHTML = "";
   q.choices.forEach((text, i) => {
@@ -116,15 +111,7 @@ function next(){
   }
 }
 
-function finish(){
-  localStorage.setItem(DONE_KEY, "1");
-  localStorage.setItem(SCORE_KEY, String(correct));
-  localStorage.setItem(TOTAL_KEY, String(questions.length));
-  localStorage.setItem(WHEN_KEY, nowText());
-  showResult(true);
-}
-
-function showResult(showLockText){
+function showResult(){
   quizUI.style.display = "none";
   resultUI.style.display = "block";
 
@@ -139,40 +126,49 @@ function showResult(showLockText){
   rPercent.textContent = `${percent}%`;
 
   const when = localStorage.getItem(WHEN_KEY) || "";
-  rWhen.textContent = when ? `Completed: ${when}` : "";
+  resultWhen.textContent = when ? `Completed: ${when}` : "";
 
-  if (showLockText){
-    lockedMsg.style.display = "block";
-    lockedMsg.textContent = "Quiz completed. You can’t take it again.";
+  const name = (localStorage.getItem(PROFILE_NAME_KEY) || "Player").trim() || "Player";
+  const avatar = localStorage.getItem(PROFILE_AVATAR_KEY) || "";
+
+  resultName.textContent = name;
+  if (avatar) {
+    resultAvatar.src = avatar;
+    resultAvatar.style.display = "block";
+  } else {
+    resultAvatar.style.display = "none";
   }
+}
 
-  loadProfile();
+function finish(){
+  localStorage.setItem(DONE_KEY, "1");
+  localStorage.setItem(SCORE_KEY, String(correct));
+  localStorage.setItem(TOTAL_KEY, String(questions.length));
+  localStorage.setItem(WHEN_KEY, nowText());
+  showResult();
 }
 
 function boot(){
   if (localStorage.getItem(DONE_KEY) === "1"){
     lockedMsg.style.display = "block";
     lockedMsg.textContent = "You already completed this quiz.";
-    showResult(false);
-    return;
+    showResult();
+  } else {
+    nextBtn.addEventListener("click", next);
+    render();
   }
 
-  nextBtn.addEventListener("click", next);
-  playerName.addEventListener("input", saveProfile);
+  if (genCardBtn) {
+    genCardBtn.addEventListener("click", async () => {
+      const total = Number(localStorage.getItem(TOTAL_KEY) || questions.length);
+      const c = Number(localStorage.getItem(SCORE_KEY) || correct);
+      const scoreText = `Score: ${c} / ${total}`;
 
-  avatarFile.addEventListener("change", (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      localStorage.setItem(AVATAR_KEY, dataUrl);
-      avatarPreview.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  });
-
-  render();
+      if (typeof window.MB_generateQuizCard === "function") {
+        await window.MB_generateQuizCard({ quizTitle: "Guess the Movie", scoreText });
+      }
+    });
+  }
 }
 
 boot();
