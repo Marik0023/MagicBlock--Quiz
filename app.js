@@ -18,7 +18,6 @@ function getProfile(){
 function setProfile(profile){
   localStorage.setItem(MB_KEYS.profile, JSON.stringify(profile));
 }
-
 function forcePlayAll(selector){
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
@@ -74,7 +73,6 @@ function openProfileModal(force = false){
   if (closeBtn){
     closeBtn.style.display = (force && !p) ? "none" : "flex";
   }
-
   if (startBtn) startBtn.disabled = false;
 }
 
@@ -93,8 +91,13 @@ function initProfileModal(){
   const nameInput = document.getElementById("profileName");
   const fileInput = document.getElementById("profileFile");
   const preview = document.getElementById("profilePreview");
+  const avatarBox = document.getElementById("avatarBox");
 
   closeBtn?.addEventListener("click", closeProfileModal);
+
+  avatarBox?.addEventListener("click", () => {
+    fileInput?.click();
+  });
 
   fileInput?.addEventListener("change", async () => {
     const f = fileInput.files?.[0];
@@ -107,7 +110,6 @@ function initProfileModal(){
     const pOld = getProfile() || {};
     const name = (nameInput?.value || "").trim() || "Player";
     const avatar = (preview?.src || "").startsWith("data:") ? preview.src : (pOld.avatar || "");
-
     setProfile({ name, avatar });
     renderTopProfile();
     closeProfileModal();
