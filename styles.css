@@ -33,41 +33,67 @@ body{
     linear-gradient(to bottom, rgba(0,0,0,.25), rgba(0,0,0,.78));
 }
 
-/* ✅ Topbar (thinner) */
+/* ✅ Topbar: thin rectangle, logo keeps big size */
 .topbar{
   position: sticky;
   top: 0;
   z-index: 10;
+
+  /* тонка висота плашки (самого прямокутника) */
+  height: 52px;
+
+  /* горизонтальні відступи */
+  padding: 0 20px;
+
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:flex-start;
 
-  /* was 16px 20px -> now ~2x thinner */
-  padding: 8px 16px;
+  /* ВАЖЛИВО: фон переносимо в ::before */
+  background: transparent;
+  border-bottom: none;
 
-  backdrop-filter: blur(12px);
+  /* щоб великий логотип НЕ обрізався */
+  overflow: visible;
+
+  /* для ::before */
+  position: sticky;
+}
+
+.topbar::before{
+  content:"";
+  position:absolute;
+  left:0; right:0; top:0;
+  height: 52px;            /* тонкий прямокутник */
   background: rgba(0,0,0,.20);
   border-bottom: 1px solid rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: -1;
 }
 
 /* Brand is a link */
 .brand{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:12px;
   text-decoration:none;
   cursor:pointer;
+
+  /* трохи опустимо логотип, щоб він "сидів" красиво на плашці */
+  padding-top: 6px;
 }
+
 .brand:focus-visible{
   outline: 2px solid rgba(255,255,255,.35);
   outline-offset: 6px;
   border-radius: 12px;
 }
 
-/* ✅ BIG LOGO, but shorter height to fit thinner topbar */
+/* ✅ LOGO back to original big size (no rectangle) */
 .brand__logo{
   width: 320px;
-  height: 44px;     /* was 80px */
+  height: 80px;     /* повернули як було */
   border-radius: 0;
   background: transparent;
   border: none;
@@ -82,7 +108,9 @@ body{
 .container{
   max-width: 1060px;
   margin: 0 auto;
-  padding: 34px 18px 54px;
+
+  /* трохи більше top padding, щоб великий логотип не наїжджав на hero */
+  padding: 44px 18px 54px;
 }
 
 .hero__title{
@@ -167,7 +195,7 @@ body{
   box-shadow: 0 0 18px rgba(255,255,255,.10), 0 18px 45px rgba(0,0,0,.55);
 }
 
-/* ✅ Next appear + glow animation */
+/* Next appear + glow animation */
 @keyframes nextIn {
   0%   { opacity:0; transform: translateY(8px) scale(.98); filter: blur(2px); }
   60%  { opacity:1; transform: translateY(-1px) scale(1.01); filter: blur(0); }
@@ -247,7 +275,6 @@ body{
   gap: 12px;
 }
 
-/* result logo also without rectangle */
 .resultLogo{
   width: 260px;
   height: 70px;
@@ -317,9 +344,7 @@ body{
   font-weight: 800;
 }
 
-/* =========================
-   Custom dark audio player
-   ========================= */
+/* Custom dark audio player */
 .player{
   display:flex;
   gap:14px;
@@ -437,13 +462,18 @@ body{
 @media (max-width: 920px){
   .grid{ grid-template-columns: 1fr; }
   .resultGrid{ grid-template-columns: 1fr; }
-  .brand__logo{ width: 260px; height: 40px; } /* thinner header */
-  .resultLogo{ width: 240px; height: 64px; }
+
+  /* logo stays big-ish on tablet */
+  .brand__logo{ width: 260px; height: 70px; }
 }
 
 @media (max-width: 700px){
   .player{ gap: 10px; }
   .player__cover{ width: 72px; height: 72px; }
   .vol{ width: 90px; }
-  .brand__logo{ width: 220px; height: 38px; }
+
+  /* logo stays readable on phone */
+  .brand__logo{ width: 220px; height: 62px; }
+  .topbar{ height: 48px; }
+  .topbar::before{ height: 48px; }
 }
