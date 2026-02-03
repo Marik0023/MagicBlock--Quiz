@@ -768,3 +768,35 @@ img{max-width:100%; display:block}
     animation: none !important;
   }
 }
+
+/* =========================================================
+   QUIZ CARD PREVIEW (wide, no black frame)
+   - does NOT touch champion look
+   - only affects result cards in quizzes via #cardZone
+========================================================= */
+
+#cardZone .cardPreview{
+  width: min(980px, 100%);
+  margin: 0 auto;
+
+  /* прибираємо чорну "рамку" */
+  background: transparent !important;
+  border: 0 !important;
+
+  /* залишаємо акуратну тінь як на сайті */
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+
+  border-radius: 28px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+#cardZone .cardPreview canvas{
+  width: 100%;
+  height: auto;
+  display: block;
+
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 28px;
+}
