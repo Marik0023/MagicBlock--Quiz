@@ -26,7 +26,6 @@
         <video class="brand__logo" autoplay muted loop playsinline>
           <source src="assets/logo.webm" type="video/webm" />
         </video>
-        <span class="brand__tag">Quiz</span>
       </a>
 
       <div id="profilePill" class="profilePill" title="Profile">
@@ -51,15 +50,15 @@
         <div class="badgeDone" data-badge="song" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <!-- IMPORTANT: assets are in assets/tiles/ -->
-            <img src="assets/tiles/song.png" alt="Song quiz cover" loading="lazy" />
+            <!-- ВАЖЛИВО: tiles -->
+            <img src="assets/tiles/song.png" alt="Song quiz cover" />
           </div>
           <div class="quizCard__meta">QUIZ 1</div>
           <div class="quizCard__title">Guess the Song by the Melody</div>
           <p class="quizCard__desc">Listen to a short melody and choose the correct song.</p>
 
           <div class="quizCard__footer">
-            <button class="btn" data-start="song" type="button">Start</button>
+            <button class="btn" data-start="song">Start</button>
           </div>
         </div>
       </article>
@@ -69,14 +68,14 @@
         <div class="badgeDone" data-badge="movie" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <img src="assets/tiles/cinema.png" alt="Movie quiz cover" loading="lazy" />
+            <img src="assets/tiles/cinema.png" alt="Movie quiz cover" />
           </div>
           <div class="quizCard__meta">QUIZ 2</div>
           <div class="quizCard__title">Guess the Movie by the Frame</div>
           <p class="quizCard__desc">Look at a frame and pick the correct movie.</p>
 
           <div class="quizCard__footer">
-            <button class="btn" data-start="movie" type="button">Start</button>
+            <button class="btn" data-start="movie">Start</button>
           </div>
         </div>
       </article>
@@ -86,14 +85,14 @@
         <div class="badgeDone" data-badge="magicblock" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <img src="assets/tiles/learn.png" alt="MagicBlock quiz cover" loading="lazy" />
+            <img src="assets/tiles/learn.png" alt="MagicBlock quiz cover" />
           </div>
           <div class="quizCard__meta">QUIZ 3</div>
           <div class="quizCard__title">How well do you know MagicBlock?</div>
           <p class="quizCard__desc">10 questions about MagicBlock — pick A/B/C/D.</p>
 
           <div class="quizCard__footer">
-            <button class="btn" data-start="magicblock" type="button">Start</button>
+            <button class="btn" data-start="magicblock">Start</button>
           </div>
         </div>
       </article>
@@ -103,8 +102,8 @@
     <section id="championWrap" class="champion" style="display:none;">
       <div class="champion__inner">
         <div class="champion__title">Champion Card</div>
-        <p class="champion__desc">Complete all 3 quizzes to unlock the Champion card</p>
-        <button id="openChampionBtn" class="btn" type="button">Generate Champion Card</button>
+        <p class="champion__desc">Complete all 3 quizzes to unlock the Champion card.</p>
+        <button id="openChampionBtn" class="btn">Generate Champion Card</button>
       </div>
     </section>
 
@@ -117,9 +116,9 @@
       <div class="modalCard__head">
         <div>
           <h2 class="modalCard__title">Create your profile</h2>
-          <p class="modalCard__sub">This will appear on your result cards</p>
+          <p class="modalCard__sub">This will appear on your result cards.</p>
         </div>
-        <button id="profileCloseBtn" class="modalClose" aria-label="Close" type="button">×</button>
+        <button id="profileCloseBtn" class="modalClose" aria-label="Close">×</button>
       </div>
 
       <div class="modalCard__body">
@@ -131,14 +130,14 @@
 
           <div class="field">
             <input id="profileName" class="input" placeholder="Enter your name" />
-            <div class="help">Tip: you can click your profile later to change it</div>
+            <div class="help">Tip: you can click your profile later to change it.</div>
 
             <div class="btnRow">
               <label class="btn btn--ghost" style="cursor:pointer;">
                 Choose image
                 <input id="profileFile" type="file" accept="image/*" style="display:none;">
               </label>
-              <button id="profileSaveBtn" class="btn" type="button">Start</button>
+              <button id="profileSaveBtn" class="btn">Start</button>
             </div>
           </div>
         </div>
