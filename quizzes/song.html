@@ -44,6 +44,7 @@
     <!-- QUIZ -->
     <section id="quizPanel" class="panel">
       <div class="quizLayout">
+        <!-- LEFT -->
         <div>
           <div class="questionTitle" id="qTitle">Question 1 of 10</div>
 
@@ -52,24 +53,28 @@
               <div class="mbPlayer__cover">
                 <img id="playerCover" src="../assets/covers/placeholder.jpg" alt="" />
               </div>
+
               <div class="mbPlayer__meta">
                 <div class="mbPlayer__title" id="playerName">Guess the song</div>
                 <div class="mbPlayer__time" id="playerTime">0:00 / 0:00</div>
               </div>
+
               <button class="mbPlayer__btn" id="playBtn" aria-label="Play/Pause">▶</button>
             </div>
+
             <div class="mbPlayer__bar">
               <input class="range" id="seekBar" type="range" min="0" max="100" value="0" />
             </div>
           </div>
 
           <div class="progressText" id="progressText">Progress: 1 / 10</div>
-
           <audio id="audio" preload="metadata"></audio>
         </div>
 
+        <!-- RIGHT -->
         <div>
           <div class="options" id="options"></div>
+
           <div class="nextWrap">
             <button class="btn nextBtn" id="nextBtn" disabled>Next</button>
           </div>
