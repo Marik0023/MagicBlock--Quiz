@@ -1,15 +1,11 @@
 const y = document.getElementById("year");
 if (y) y.textContent = new Date().getFullYear();
 
-// Autoplay helper for ALL matches
 function forcePlayAll(selector){
   const videos = document.querySelectorAll(selector);
   if (!videos.length) return;
 
-  const tryPlay = () => {
-    videos.forEach(v => v.play().catch(() => {}));
-  };
-
+  const tryPlay = () => videos.forEach(v => v.play().catch(() => {}));
   tryPlay();
   window.addEventListener("click", tryPlay, { once: true });
   window.addEventListener("touchstart", tryPlay, { once: true });
@@ -19,7 +15,6 @@ forcePlayAll(".bg__video");
 forcePlayAll(".brand__logo");
 forcePlayAll(".resultLogo");
 
-// Completed badges on Home + Champion unlock
 function isDone(key){
   return localStorage.getItem(key) === "1";
 }
