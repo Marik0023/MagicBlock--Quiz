@@ -1,8 +1,9 @@
 const MB_KEYS = {
   profile: "mb_profile",
-  done: "mb_done_magicblock",
-  result: "mb_result_magicblock",
+  doneMagic: "mb_done_magicblock",
+  resMagic: "mb_result_magicblock",
 };
+
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
 function getProfile(){ return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
 
@@ -38,35 +39,36 @@ function renderTopProfile(){
 }
 renderTopProfile();
 
-// Replace with your real questions
+/**
+ * TODO: підстав свої реальні питання.
+ */
 const QUESTIONS = [
-  { text:"MagicBlock is best described as…", choices:["a quiz site","a music band","a video game","a restaurant"], correctIndex:0 },
-  { text:"Which page hosts the quizzes on this site?", choices:["Home","Settings","Contact","Profile"], correctIndex:0 },
-  { text:"Where should you put audio clips for Quiz 1?", choices:["/assets/songs/","/assets/movies/","/quizzes/","/css/"], correctIndex:0 },
-  { text:"How many options are in each question?", choices:["2","3","4","5"], correctIndex:2 },
-  { text:"What happens when you finish a quiz?", choices:["Nothing","Result + Generate Card","Site crashes","It restarts"], correctIndex:1 },
-  { text:"Where is profile stored?", choices:["Server DB","Cookies only","localStorage","Email"], correctIndex:2 },
-  { text:"What unlocks Champion Card?", choices:["1 quiz","2 quizzes","All 3 quizzes","Never"], correctIndex:2 },
-  { text:"What does Next button do?", choices:["Skips question","Shows result","Moves forward after answer","Deletes profile"], correctIndex:2 },
-  { text:"What’s the theme style?", choices:["Bright","Dark glass","Retro","Plain"], correctIndex:1 },
-  { text:"What appears on result cards?", choices:["Only score","Name + avatar + stats","Random text","Ads"], correctIndex:1 },
+  { text: "MagicBlock is…", options: ["A", "B", "C", "D"], correctIndex: 0 },
+  { text: "MagicBlock helps with…", options: ["A", "B", "C", "D"], correctIndex: 1 },
+  { text: "MagicBlock is built for…", options: ["A", "B", "C", "D"], correctIndex: 2 },
+  { text: "MagicBlock main focus is…", options: ["A", "B", "C", "D"], correctIndex: 3 },
+  { text: "Question 5", options: ["A", "B", "C", "D"], correctIndex: 0 },
+  { text: "Question 6", options: ["A", "B", "C", "D"], correctIndex: 1 },
+  { text: "Question 7", options: ["A", "B", "C", "D"], correctIndex: 2 },
+  { text: "Question 8", options: ["A", "B", "C", "D"], correctIndex: 3 },
+  { text: "Question 9", options: ["A", "B", "C", "D"], correctIndex: 0 },
+  { text: "Question 10", options: ["A", "B", "C", "D"], correctIndex: 1 },
 ];
 
-const quizView = document.getElementById("quizView");
-const resultView = document.getElementById("resultView");
+const quizPanel = document.getElementById("quizPanel");
+const resultPanel = document.getElementById("resultPanel");
 
-const qStatus = document.getElementById("qStatus");
-const qText = document.getElementById("qText");
+const qTitle = document.getElementById("qTitle");
 const progressText = document.getElementById("progressText");
+const questionText = document.getElementById("questionText");
 const optionsEl = document.getElementById("options");
 const nextBtn = document.getElementById("nextBtn");
 
-const resName = document.getElementById("resName");
-const resDone = document.getElementById("resDone");
-const resTotal = document.getElementById("resTotal");
-const resCorrect = document.getElementById("resCorrect");
-const resWrong = document.getElementById("resWrong");
-const resAcc = document.getElementById("resAcc");
+const rName = document.getElementById("rName");
+const rTotal = document.getElementById("rTotal");
+const rCorrect = document.getElementById("rCorrect");
+const rAcc = document.getElementById("rAcc");
+
 const genBtn = document.getElementById("genBtn");
 const cardZone = document.getElementById("cardZone");
 const cardCanvas = document.getElementById("cardCanvas");
@@ -74,107 +76,107 @@ const dlBtn = document.getElementById("dlBtn");
 
 let idx = 0;
 let correct = 0;
-let locked = false;
+let selectedIndex = null;
 
-function render(){
-  locked = false;
-  nextBtn.classList.remove("isShow");
-
-  qStatus.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
-  progressText.textContent = `Progress: ${idx} / ${QUESTIONS.length}`;
-
-  const q = QUESTIONS[idx];
-  qText.textContent = q.text;
-
-  optionsEl.innerHTML = "";
-  q.choices.forEach((c, i) => {
-    const btn = document.createElement("button");
-    btn.className = "optionBtn";
-    btn.textContent = `${String.fromCharCode(65+i)}) ${c}`;
-    btn.addEventListener("click", () => pick(i));
-    optionsEl.appendChild(btn);
-  });
-
-  nextBtn.textContent = (idx === QUESTIONS.length - 1) ? "Finish" : "Next";
+const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
+const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
+if (done && saved){
+  showResult(saved);
+} else {
+  renderQuestion();
 }
 
-function pick(i){
-  if (locked) return;
-  locked = true;
+function renderQuestion(){
+  selectedIndex = null;
+  nextBtn.disabled = true;
+  nextBtn.classList.remove("isShow");
 
   const q = QUESTIONS[idx];
-  const ok = i === q.correctIndex;
-  if (ok) correct += 1;
-
-  const buttons = [...optionsEl.querySelectorAll("button")];
-  buttons.forEach((b, bi) => {
-    b.disabled = true;
-    if (bi === q.correctIndex) b.classList.add("isCorrect");
-    if (bi === i && !ok) b.classList.add("isWrong");
-  });
-
-  nextBtn.classList.add("isShow");
+  qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
   progressText.textContent = `Progress: ${idx + 1} / ${QUESTIONS.length}`;
+  questionText.textContent = q.text;
+
+  optionsEl.innerHTML = "";
+  q.options.forEach((label, i) => {
+    const btn = document.createElement("button");
+    btn.className = "optionBtn";
+    btn.type = "button";
+    btn.textContent = `${String.fromCharCode(65+i)}) ${label}`;
+    btn.addEventListener("click", () => {
+      selectedIndex = i;
+      updateSelectedUI();
+      nextBtn.disabled = false;
+      nextBtn.classList.add("isShow");
+    });
+    optionsEl.appendChild(btn);
+  });
+}
+
+function updateSelectedUI(){
+  [...optionsEl.querySelectorAll(".optionBtn")].forEach((b, i) => {
+    b.classList.toggle("isSelected", i === selectedIndex);
+  });
 }
 
 nextBtn.addEventListener("click", () => {
-  if (!locked) return;
-  if (idx < QUESTIONS.length - 1){
-    idx += 1;
-    render();
-  } else finish();
+  if (selectedIndex === null) return;
+
+  const q = QUESTIONS[idx];
+  if (selectedIndex === q.correctIndex) correct++;
+
+  idx++;
+  if (idx < QUESTIONS.length){
+    renderQuestion();
+    return;
+  }
+
+  const total = QUESTIONS.length;
+  const acc = Math.round((correct / total) * 100);
+  const p = getProfile();
+
+  const result = { total, correct, acc, name: p?.name || "Player", ts: Date.now() };
+
+  localStorage.setItem(MB_KEYS.doneMagic, "1");
+  localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(result));
+
+  showResult(result);
 });
 
-function finish(){
-  const total = QUESTIONS.length;
-  const wrong = total - correct;
-  const accuracy = Math.round((correct / total) * 100);
-  const completedAt = new Date().toISOString();
-
-  const result = { quiz:"magicblock", total, correct, wrong, accuracy, completedAt };
-  localStorage.setItem(MB_KEYS.result, JSON.stringify(result));
-  localStorage.setItem(MB_KEYS.done, "1");
-  showResult(result);
-}
-
 function showResult(result){
-  quizView.style.display = "none";
-  resultView.style.display = "block";
+  quizPanel.style.display = "none";
+  resultPanel.style.display = "block";
 
-  const p = getProfile();
-  resName.textContent = p?.name || "Player";
-
-  const d = new Date(result.completedAt);
-  resDone.textContent = `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
-
-  resTotal.textContent = String(result.total);
-  resCorrect.textContent = String(result.correct);
-  resWrong.textContent = String(result.wrong);
-  resAcc.textContent = `${result.accuracy}%`;
-
-  cardZone.classList.remove("isOpen");
+  rName.textContent = result.name || "Player";
+  rTotal.textContent = String(result.total);
+  rCorrect.textContent = String(result.correct);
+  rAcc.textContent = `${result.acc}%`;
 }
 
 genBtn.addEventListener("click", async () => {
-  const result = safeJSONParse(localStorage.getItem(MB_KEYS.result), null);
-  if (!result) return;
+  const p = getProfile();
+  const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
+  if (!r) return;
 
-  await drawCard({
-    title: "MagicBlock Quiz\nMagicBlock Result",
-    result,
+  await drawResultCard({
+    title: "MagicBlock Quiz",
+    profile: p,
+    total: r.total,
+    correct: r.correct,
+    acc: r.acc
   });
+
   cardZone.classList.add("isOpen");
   cardZone.scrollIntoView({ behavior:"smooth", block:"start" });
 });
 
 dlBtn.addEventListener("click", () => {
   const a = document.createElement("a");
-  a.download = "magicblock-magicblock-card.png";
+  a.download = "magicblock-knowledge-result.png";
   a.href = cardCanvas.toDataURL("image/png");
   a.click();
 });
 
-async function drawCard({ title, result }){
+async function drawResultCard(data){
   const ctx = cardCanvas.getContext("2d");
   const W = cardCanvas.width, H = cardCanvas.height;
 
@@ -192,32 +194,31 @@ async function drawCard({ title, result }){
   roundRect(ctx, 110, 110, W-220, H-220, 64, true, false);
 
   ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "900 74px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  drawMultiline(ctx, title, 160, 230, 82);
+  ctx.font = "950 86px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("MagicBlock Quiz", 160, 240);
 
-  const p = getProfile() || { name:"Player", avatar:"" };
+  ctx.fillStyle = "rgba(255,255,255,0.82)";
+  ctx.font = "900 54px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(data.title, 160, 320);
+
+  const name = data.profile?.name || "Player";
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = "900 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(p.name || "Player", 260, 520);
+  ctx.fillText(name, 260, 520);
 
-  await drawAvatarCircle(ctx, p.avatar, 160, 472, 74);
+  await drawAvatarCircle(ctx, data.profile?.avatar || "", 160, 472, 74);
 
-  ctx.font = "800 44px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.font = "800 46px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillStyle = "rgba(255,255,255,0.86)";
-  ctx.fillText(`Correct: ${result.correct} / ${result.total}`, 160, 640);
-  ctx.fillStyle = "rgba(255,255,255,0.70)";
-  ctx.fillText(`Accuracy: ${result.accuracy}%`, 160, 710);
-
-  const d = new Date(result.completedAt);
-  const done = `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}:${String(d.getSeconds()).padStart(2,"0")}`;
-  ctx.fillStyle = "rgba(255,255,255,0.62)";
-  ctx.font = "700 36px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`Completed: ${done}`, 160, 780);
+  ctx.fillText(`Correct: ${data.correct} / ${data.total}`, 160, 650);
+  ctx.fillStyle = "rgba(255,255,255,0.72)";
+  ctx.fillText(`Accuracy: ${data.acc}%`, 160, 725);
 
   ctx.fillStyle = "rgba(255,255,255,0.10)";
   roundRect(ctx, 160, H-220, W-320, 96, 48, true, false);
   ctx.fillStyle = "rgba(255,255,255,0.88)";
   ctx.font = "900 40px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("magicblock quiz card", 210, H-155);
+  ctx.fillText("result card", 210, H-155);
 }
 
 function roundRect(ctx, x, y, w, h, r, fill, stroke){
@@ -232,10 +233,7 @@ function roundRect(ctx, x, y, w, h, r, fill, stroke){
   if (fill) ctx.fill();
   if (stroke) ctx.stroke();
 }
-function drawMultiline(ctx, text, x, y, lineH){
-  const lines = String(text).split("\n");
-  lines.forEach((ln, i) => ctx.fillText(ln, x, y + i*lineH));
-}
+
 async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
   ctx.save();
   ctx.beginPath();
@@ -259,6 +257,7 @@ async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
   ctx.lineWidth = 3;
   ctx.stroke();
 }
+
 function loadImage(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -267,13 +266,3 @@ function loadImage(src){
     img.src = src;
   });
 }
-
-(function boot(){
-  const saved = safeJSONParse(localStorage.getItem(MB_KEYS.result), null);
-  const done = localStorage.getItem(MB_KEYS.done) === "1";
-  if (done && saved){
-    showResult(saved);
-    return;
-  }
-  render();
-})();
