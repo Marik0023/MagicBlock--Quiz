@@ -622,9 +622,14 @@ img{max-width:100%; display:block}
    - smooth, reaches edges
 ========================================================= */
 
+:root{
+  --mb-champ-preview-w: 420px;
+  --mb-quiz-preview-w: 490px; /* було 980px -> зменшили ~в 2 рази */
+}
+
 .cardPreview{
   position: relative;
-  width: min(420px, 100%);
+  width: min(var(--mb-preview-w, var(--mb-champ-preview-w)), 100%);
   margin: 0 auto;
 
   border-radius: 22px;
@@ -704,7 +709,6 @@ img{max-width:100%; display:block}
 
   /* bigger than card => guarantees "from outside" and "to outside" */
   inset:-90%;
-
   pointer-events:none;
 
   background: linear-gradient(120deg,
@@ -720,17 +724,13 @@ img{max-width:100%; display:block}
   mix-blend-mode: screen;
   filter: blur(.9px);
 
-  /* start fully outside left */
   transform: translateX(-110%) rotate(-8deg);
   opacity: 0;
 
-  /* cycle = 2s */
   animation: mbShineEvery2s 2s ease-in-out infinite;
 }
 
-/* плавно проходить через всю карту і виходить за межі */
 @keyframes mbShineEvery2s{
-  /* small pause outside */
   0%{
     transform: translateX(-110%) rotate(-8deg);
     opacity: 0;
@@ -739,16 +739,12 @@ img{max-width:100%; display:block}
     transform: translateX(-110%) rotate(-8deg);
     opacity: 0;
   }
-
-  /* sweep */
   22%{ opacity: .55; }
   50%{
     transform: translateX(0%) rotate(-8deg);
     opacity: .75;
   }
   78%{ opacity: .55; }
-
-  /* exit outside */
   90%{
     transform: translateX(110%) rotate(-8deg);
     opacity: 0;
@@ -770,20 +766,16 @@ img{max-width:100%; display:block}
 }
 
 /* =========================================================
-   QUIZ CARD PREVIEW (wide, no black frame)
-   - does NOT touch champion look
-   - only affects result cards in quizzes via #cardZone
+   QUIZ CARD PREVIEW (smaller, no black frame)
+   працює ТІЛЬКИ якщо на сторінці є <body class="mbQuiz">
 ========================================================= */
 
-#cardZone .cardPreview{
-  width: min(980px, 100%);
-  margin: 0 auto;
+body.mbQuiz #cardZone .cardPreview{
+  --mb-preview-w: var(--mb-quiz-preview-w);
 
-  /* прибираємо чорну "рамку" */
   background: transparent !important;
   border: 0 !important;
 
-  /* залишаємо акуратну тінь як на сайті */
   box-shadow: 0 18px 60px rgba(0,0,0,.55);
 
   border-radius: 28px;
@@ -791,11 +783,7 @@ img{max-width:100%; display:block}
   isolation: isolate;
 }
 
-#cardZone .cardPreview canvas{
-  width: 100%;
-  height: auto;
-  display: block;
-
+body.mbQuiz #cardZone .cardPreview canvas{
   background: transparent !important;
   border: 0 !important;
   border-radius: 28px;
