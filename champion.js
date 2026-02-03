@@ -25,6 +25,7 @@ forcePlayAll(".brand__logo");
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
   if (!pill) return;
+
   const img = pill.querySelector("img");
   const nameEl = pill.querySelector("[data-profile-name]");
   const hintEl = pill.querySelector("[data-profile-hint]");
@@ -75,17 +76,18 @@ function computeSummary(){
   const r2 = loadResult(MB_KEYS.resMovie);
   const r3 = loadResult(MB_KEYS.resMagic);
 
-  const results = [r1, r2, r3].filter(Boolean);
-  const total = results.reduce((a,r)=>a + (r.total||0), 0);
-  const correct = results.reduce((a,r)=>a + (r.correct||0), 0);
+  const results = [r1, r2, r3];
+  const okAll = results.every(Boolean);
+
+  const total = results.reduce((a,r)=>a + (r?.total||0), 0);
+  const correct = results.reduce((a,r)=>a + (r?.correct||0), 0);
   const acc = total ? Math.round((correct/total)*100) : 0;
 
   sumTotal.textContent = String(total);
   sumCorrect.textContent = String(correct);
   sumAcc.textContent = `${acc}%`;
 
-  // Генерувати можна тільки якщо є профіль + всі 3 done + всі 3 result
-  const unlocked = !!p && doneCount === 3 && results.length === 3;
+  const unlocked = doneCount === 3 && okAll && !!p;
   genBtn.disabled = !unlocked;
 
   return { unlocked, total, correct, acc, profile: p };
@@ -113,40 +115,35 @@ async function drawChampionCard(summary){
 
   ctx.clearRect(0,0,W,H);
 
-  // background
   const g = ctx.createLinearGradient(0,0,W,H);
   g.addColorStop(0, "#0b0d12");
   g.addColorStop(1, "#05060a");
   ctx.fillStyle = g;
   ctx.fillRect(0,0,W,H);
 
-  // frames
   ctx.fillStyle = "rgba(255,255,255,0.06)";
   roundRect(ctx, 70, 70, W-140, H-140, 70, true, false);
 
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   roundRect(ctx, 110, 110, W-220, H-220, 64, true, false);
 
-  // title
   ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = "950 86px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText("MagicBlock Champion", 160, 240);
 
-  // avatar + name
   await drawAvatarCircle(ctx, summary.profile?.avatar || "", 160, 472, 74);
 
   const name = summary.profile?.name || "Player";
   ctx.font = "900 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.fillText(name, 260, 520);
 
-  // stats
   ctx.font = "800 46px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillStyle = "rgba(255,255,255,0.86)";
   ctx.fillText(`Correct: ${summary.correct} / ${summary.total}`, 160, 650);
   ctx.fillStyle = "rgba(255,255,255,0.70)";
   ctx.fillText(`Accuracy: ${summary.acc}%`, 160, 725);
 
-  // footer pill
   ctx.fillStyle = "rgba(255,255,255,0.10)";
   roundRect(ctx, 160, H-220, W-320, 96, 48, true, false);
   ctx.fillStyle = "rgba(255,255,255,0.88)";
@@ -167,7 +164,7 @@ function roundRect(ctx, x, y, w, h, r, fill, stroke){
   if (stroke) ctx.stroke();
 }
 
-async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
+async function drawAvatarCircle(ctx, src, cx, cy, r){
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI*2);
@@ -176,12 +173,9 @@ async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
   ctx.fill();
   ctx.clip();
 
-  if (dataUrl && dataUrl.startsWith("data:")){
-    try{
-      const img = await loadImage(dataUrl);
-      const size = r*2;
-      ctx.drawImage(img, cx-r, cy-r, size, size);
-    }catch{}
+  if (src && src.startsWith("data:")){
+    const img = await loadImage(src);
+    ctx.drawImage(img, cx-r, cy-r, r*2, r*2);
   }
   ctx.restore();
 
