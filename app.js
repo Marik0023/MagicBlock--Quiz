@@ -8,6 +8,8 @@ const MB_KEYS = {
   resMagic: "mb_result_magicblock",
 };
 
+const MB_PLACEHOLDER = "assets/covers/placeholder.jpg";
+
 function safeJSONParse(v, fallback = null){
   try { return JSON.parse(v); } catch { return fallback; }
 }
@@ -18,6 +20,7 @@ function getProfile(){
 function setProfile(profile){
   localStorage.setItem(MB_KEYS.profile, JSON.stringify(profile));
 }
+
 function forcePlayAll(selector){
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
@@ -43,17 +46,18 @@ function renderTopProfile(){
 
   const p = getProfile();
   if (!p){
-    if (avatarImg) avatarImg.src = "";
+    if (avatarImg) avatarImg.src = MB_PLACEHOLDER;
     if (nameEl) nameEl.textContent = "Create profile";
     if (hintEl) hintEl.textContent = "Click to set";
     return;
   }
 
-  if (avatarImg) avatarImg.src = p.avatar || "";
+  if (avatarImg) avatarImg.src = p.avatar || MB_PLACEHOLDER;
   if (nameEl) nameEl.textContent = p.name || "Player";
   if (hintEl) hintEl.textContent = "Edit";
 }
 
+// ===== Profile modal =====
 function openProfileModal(force = false){
   const modal = document.getElementById("profileModal");
   if (!modal) return;
@@ -66,7 +70,7 @@ function openProfileModal(force = false){
   const startBtn = document.getElementById("profileSaveBtn");
 
   if (nameInput) nameInput.value = p?.name || "";
-  if (preview) preview.src = p?.avatar || "";
+  if (preview) preview.src = p?.avatar || MB_PLACEHOLDER;
   if (fileInput) fileInput.value = "";
 
   const closeBtn = document.getElementById("profileCloseBtn");
@@ -91,13 +95,8 @@ function initProfileModal(){
   const nameInput = document.getElementById("profileName");
   const fileInput = document.getElementById("profileFile");
   const preview = document.getElementById("profilePreview");
-  const avatarBox = document.getElementById("avatarBox");
 
   closeBtn?.addEventListener("click", closeProfileModal);
-
-  avatarBox?.addEventListener("click", () => {
-    fileInput?.click();
-  });
 
   fileInput?.addEventListener("change", async () => {
     const f = fileInput.files?.[0];
@@ -109,7 +108,13 @@ function initProfileModal(){
   saveBtn?.addEventListener("click", () => {
     const pOld = getProfile() || {};
     const name = (nameInput?.value || "").trim() || "Player";
-    const avatar = (preview?.src || "").startsWith("data:") ? preview.src : (pOld.avatar || "");
+
+    // зберігаємо тільки реальний dataURL (а не placeholder)
+    let avatar = "";
+    const src = (preview?.src || "");
+    if (src.startsWith("data:")) avatar = src;
+    else avatar = pOld.avatar || "";
+
     setProfile({ name, avatar });
     renderTopProfile();
     closeProfileModal();
@@ -125,6 +130,7 @@ function initProfileModal(){
   }
 }
 
+// ===== Home =====
 function isDone(key){ return localStorage.getItem(key) === "1"; }
 
 function updateBadges(){
@@ -168,6 +174,7 @@ function initHomeButtons(){
   champBtn?.addEventListener("click", () => location.href = "champion.html");
 }
 
+// ===== Bootstrap =====
 renderTopProfile();
 initProfileModal();
 updateBadges();
