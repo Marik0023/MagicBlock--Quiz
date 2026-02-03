@@ -3,102 +3,139 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Guess the Song</title>
+  <title>MagicBlock Quiz — Song</title>
   <link rel="stylesheet" href="../styles.css" />
-</head>
-<body data-require-profile="1">
 
+  <style>
+    #choices{display:flex;flex-direction:column;gap:12px;margin-top:14px;}
+    .choiceBtn{
+      width:100%;
+      text-align:left;
+      padding:16px 16px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(0,0,0,.35);
+      color:#fff;
+      font-weight:700;
+      letter-spacing:.2px;
+      cursor:pointer;
+      transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease,background .12s ease;
+    }
+    .choiceBtn:hover{border-color:rgba(255,255,255,.85); background:rgba(255,255,255,.06);}
+    .choiceBtn.is-selected{
+      border-color:rgba(255,255,255,1);
+      box-shadow:0 0 0 1px rgba(255,255,255,.55), 0 0 26px rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+    }
+
+    .btn--next[disabled]{opacity:.45;cursor:not-allowed;}
+    .btn--next.is-visible{
+      opacity:1 !important;
+      transform:translateY(0) !important;
+      animation:nextGlow 1.25s ease-in-out infinite;
+    }
+    @keyframes nextGlow{
+      0%,100%{box-shadow:0 0 0 rgba(255,255,255,0)}
+      50%{box-shadow:0 0 26px rgba(255,255,255,.18)}
+    }
+
+    .mediaBox{
+      margin-top:12px;
+      border-radius:22px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(0,0,0,.28);
+      padding:14px;
+      overflow:hidden;
+    }
+    .cover{
+      width:100%;
+      max-height:520px;
+      object-fit:cover;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.10);
+      display:none;
+      margin-bottom:10px;
+    }
+    .missing{
+      display:none;
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.85);
+      font-size:14px;
+    }
+    canvas{width:100%;height:auto;border-radius:18px;border:1px solid rgba(255,255,255,.14);}
+  </style>
+</head>
+
+<body>
   <div class="bg">
-    <video class="bg__video" autoplay muted loop playsinline
-      src="https://cdn.prod.website-files.com/67dd3f471f62a240dd544dd8%2F67dd41b5485dd4cf31eee3c0_Home_Beams-transcode.mp4"></video>
+    <video class="bg__video" autoplay muted loop playsinline>
+      <source src="https://cdn.prod.website-files.com/67dd3f471f62a240dd544dd8%2F67dd41b5485dd4cf31eee3c0_Home_Beams-transcode.mp4" type="video/mp4" />
+    </video>
+    <div class="bg__pixels"></div>
     <div class="bg__vignette"></div>
   </div>
 
   <header class="topbar">
-    <a class="brand" href="../index.html" aria-label="MagicBlock home">
-      <video class="brand__logo" autoplay muted loop playsinline src="../assets/logo.webm"></video>
+    <a class="brand" href="../index.html" aria-label="Back to Home">
+      <video class="brand__logo" autoplay muted loop playsinline>
+        <source src="../assets/logo.webm" type="video/webm" />
+      </video>
     </a>
 
     <div class="topbar__right">
-      <button id="profileSlot" class="profile" type="button" aria-label="Profile" style="display:none">
-        <div class="profile__avatar">
-          <img id="profileAvatarImg" alt="Avatar" />
-          <div id="profileAvatarFallback" class="profile__fallback">MB</div>
-        </div>
-        <div id="profileName" class="profile__name"></div>
+      <button id="profileSlot" class="profile" type="button" style="display:none;">
+        <span class="profile__avatar">
+          <img id="profileAvatarImg" alt="" style="display:none;" />
+          <span id="profileAvatarFallback" class="profile__fallback">MB</span>
+        </span>
+        <span id="profileName" class="profile__name">Player</span>
       </button>
     </div>
   </header>
 
-  <main class="container">
-    <h1 class="hero__title">Guess the Song by the Melody</h1>
-    <p class="hero__subtitle">10 questions • A/B/C/D • Press Next after each answer.</p>
+  <main class="page">
+    <h1 class="h1">Guess the Song by the Melody</h1>
+    <div class="small">10 questions • A/B/C/D • Press Next after each answer.</div>
 
-    <section class="card quizWrap" id="quizUI">
-      <div class="qCounter" id="qCounter">Question 1 of 10</div>
+    <section class="panel" id="quizPanel" style="margin-top:14px;">
+      <div class="small" id="qMeta">Question 1 of 10</div>
 
-      <!-- hidden real audio -->
-      <audio id="audio" preload="metadata"></audio>
-
-      <!-- custom player -->
-      <div class="player">
-        <div class="player__cover">
-          <img id="cover" src="../assets/covers/placeholder.jpg" alt="Cover" />
-        </div>
-
-        <div class="player__main">
-          <div class="player__top">
-            <div class="player__title" id="trackTitle">Guess the song</div>
-            <div class="player__time"><span id="cur">0:00</span> / <span id="dur">0:00</span></div>
-          </div>
-
-          <div class="player__controls">
-            <button class="pbtn" id="playBtn" type="button">▶</button>
-            <div class="bar" id="bar">
-              <div class="bar__fill" id="fill"></div>
-              <div class="bar__knob" id="knob"></div>
-            </div>
-            <input class="vol" id="vol" type="range" min="0" max="1" step="0.01" value="0.9" />
-          </div>
-        </div>
+      <div class="mediaBox">
+        <img id="coverImg" class="cover" alt="Cover" />
+        <audio id="audio" controls></audio>
+        <div id="missingMedia" class="missing"></div>
       </div>
 
-      <div id="choices" class="quizWrap"></div>
+      <div id="choices"></div>
 
-      <div class="actions">
-        <button id="next" class="btn btn--next" type="button" style="display:none">Next →</button>
+      <div class="row" style="justify-content:space-between;align-items:center;margin-top:14px;">
+        <div class="small" id="progress">Progress: 0 / 10</div>
+        <button id="nextBtn" class="btn btn--next" type="button" disabled style="opacity:0;transform:translateY(6px);">
+          Next →
+        </button>
       </div>
-
-      <div class="small" id="status">Progress: 0 / 10</div>
-      <div class="small" id="lockedMsg" style="display:none"></div>
     </section>
 
-    <section class="resultCard" id="resultUI" style="display:none">
-      <div class="resultHeader">
-        <div class="resultProfile">
-          <img id="resultAvatar" class="resultAvatar" alt="Avatar" />
-          <div>
-            <div id="resultName" class="resultName">Player</div>
-            <div id="resultWhen" class="resultMeta"></div>
-          </div>
-        </div>
+    <section class="panel" id="resultPanel" style="display:none;margin-top:16px;">
+      <h2 class="h1" style="font-size:28px;">Result</h2>
+      <div class="p" id="resultText"></div>
+
+      <div class="row" style="margin-top:14px;gap:10px;">
+        <button id="genCardBtn" class="btn" type="button">Generate Card</button>
+        <a class="btn" href="../index.html">Back to Home</a>
       </div>
 
-      <table class="resultTable">
-        <tr><th>Total</th><td id="rTotal">10</td></tr>
-        <tr><th>Correct</th><td id="rCorrect">0</td></tr>
-        <tr><th>Wrong</th><td id="rWrong">0</td></tr>
-        <tr><th>Accuracy</th><td id="rPercent">0%</td></tr>
-      </table>
-
-      <div class="resultActions">
-        <button id="genCard" class="btn btn--next" type="button">Generate Card</button>
-        <a class="btn" href="../index.html">Back to Home</a>
+      <div class="mediaBox" id="cardPreviewWrap" style="display:none;margin-top:14px;">
+        <canvas id="cardCanvas" width="1080" height="1920"></canvas>
+        <a id="downloadLink" class="btn" style="display:none;margin-top:10px;" download="magicblock-card.png">Download PNG</a>
       </div>
     </section>
   </main>
 
-  <script src="../app.js" defer></script>
   <script src="./song.js" defer></script>
 </body>
 </html>
