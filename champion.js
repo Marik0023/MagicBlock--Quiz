@@ -38,7 +38,6 @@ if (!allDone){
   setText("cCorrect", String(correct));
   setText("cPercent", `${percent}%`);
 
-  // Profile save
   const NAME_KEY = "mb_champion_name";
   const AVATAR_KEY = "mb_champion_avatar";
 
@@ -51,8 +50,7 @@ if (!allDone){
     localStorage.setItem(NAME_KEY, cName.value || "");
   });
 
-  const savedAvatar = localStorage.getItem(AVATAR_KEY) || "";
-  cAvatarPreview.src = savedAvatar;
+  cAvatarPreview.src = localStorage.getItem(AVATAR_KEY) || "";
 
   cAvatarFile.addEventListener("change", (e) => {
     const file = e.target.files && e.target.files[0];
