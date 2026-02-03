@@ -8,8 +8,6 @@ const MB_KEYS = {
   resMagic: "mb_result_magicblock",
 };
 
-const MB_PLACEHOLDER = "assets/covers/placeholder.jpg";
-
 function safeJSONParse(v, fallback = null){
   try { return JSON.parse(v); } catch { return fallback; }
 }
@@ -33,9 +31,15 @@ function forcePlayAll(selector){
 forcePlayAll(".bg__video");
 forcePlayAll(".brand__logo");
 
+// --- assets prefix (root vs /quizzes/*) ---
+const MB_ASSET_PREFIX = location.pathname.includes("/quizzes/") ? "../assets/" : "assets/";
+const MB_AVATAR_PLACEHOLDER = MB_ASSET_PREFIX + "avatar-placeholder.jpg";
+
+// ====== Year ======
 const y = document.getElementById("year");
 if (y) y.textContent = new Date().getFullYear();
 
+// ====== Topbar profile pill render ======
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
   if (!pill) return;
@@ -45,38 +49,57 @@ function renderTopProfile(){
   const hintEl = pill.querySelector("[data-profile-hint]");
 
   const p = getProfile();
+
+  const hasAvatar = !!(p?.avatar && p.avatar.startsWith("data:"));
+
+  if (avatarImg){
+    avatarImg.src = hasAvatar ? p.avatar : MB_AVATAR_PLACEHOLDER;
+    avatarImg.classList.toggle("isPlaceholder", !hasAvatar);
+  }
+
   if (!p){
-    if (avatarImg) avatarImg.src = MB_PLACEHOLDER;
     if (nameEl) nameEl.textContent = "Create profile";
     if (hintEl) hintEl.textContent = "Click to set";
     return;
   }
 
-  if (avatarImg) avatarImg.src = p.avatar || MB_PLACEHOLDER;
   if (nameEl) nameEl.textContent = p.name || "Player";
   if (hintEl) hintEl.textContent = "Edit";
 }
 
-// ===== Profile modal =====
+// ====== Profile modal logic ======
 function openProfileModal(force = false){
   const modal = document.getElementById("profileModal");
   if (!modal) return;
   modal.classList.add("isOpen");
 
   const p = getProfile();
+
   const nameInput = document.getElementById("profileName");
   const fileInput = document.getElementById("profileFile");
   const preview = document.getElementById("profilePreview");
+  const avatarBox = document.getElementById("avatarBox");
   const startBtn = document.getElementById("profileSaveBtn");
 
   if (nameInput) nameInput.value = p?.name || "";
-  if (preview) preview.src = p?.avatar || MB_PLACEHOLDER;
   if (fileInput) fileInput.value = "";
 
+  // Preview avatar: profile avatar або placeholder
+  const hasAvatar = !!(p?.avatar && p.avatar.startsWith("data:"));
+  if (preview){
+    preview.src = hasAvatar ? p.avatar : MB_AVATAR_PLACEHOLDER;
+    preview.dataset.isPlaceholder = hasAvatar ? "0" : "1";
+  }
+  if (avatarBox){
+    avatarBox.classList.toggle("isPlaceholder", !hasAvatar);
+  }
+
+  // when forced and no profile, disable close X
   const closeBtn = document.getElementById("profileCloseBtn");
   if (closeBtn){
     closeBtn.style.display = (force && !p) ? "none" : "flex";
   }
+
   if (startBtn) startBtn.disabled = false;
 }
 
@@ -94,26 +117,36 @@ function initProfileModal(){
   const saveBtn = document.getElementById("profileSaveBtn");
   const nameInput = document.getElementById("profileName");
   const fileInput = document.getElementById("profileFile");
+  const uploadBtn = document.getElementById("profileUploadBtn");
   const preview = document.getElementById("profilePreview");
+  const avatarBox = document.getElementById("avatarBox");
 
   closeBtn?.addEventListener("click", closeProfileModal);
+
+  // важливо: тільки ОДНЕ відкриття file picker
+  uploadBtn?.addEventListener("click", () => {
+    fileInput?.click();
+  });
 
   fileInput?.addEventListener("change", async () => {
     const f = fileInput.files?.[0];
     if (!f) return;
     const dataUrl = await fileToDataURL(f);
-    if (preview) preview.src = dataUrl;
+
+    if (preview){
+      preview.src = dataUrl;
+      preview.dataset.isPlaceholder = "0";
+    }
+    avatarBox?.classList.remove("isPlaceholder");
   });
 
   saveBtn?.addEventListener("click", () => {
     const pOld = getProfile() || {};
     const name = (nameInput?.value || "").trim() || "Player";
 
-    // зберігаємо тільки реальний dataURL (а не placeholder)
-    let avatar = "";
-    const src = (preview?.src || "");
-    if (src.startsWith("data:")) avatar = src;
-    else avatar = pOld.avatar || "";
+    // якщо preview = placeholder -> не зберігаємо як аватар, беремо старий (або пусто)
+    const isPlaceholder = preview?.dataset?.isPlaceholder === "1";
+    const avatar = isPlaceholder ? (pOld.avatar || "") : (preview?.src || (pOld.avatar || ""));
 
     setProfile({ name, avatar });
     renderTopProfile();
@@ -130,7 +163,7 @@ function initProfileModal(){
   }
 }
 
-// ===== Home =====
+// ====== Quiz cards (home) ======
 function isDone(key){ return localStorage.getItem(key) === "1"; }
 
 function updateBadges(){
@@ -174,7 +207,7 @@ function initHomeButtons(){
   champBtn?.addEventListener("click", () => location.href = "champion.html");
 }
 
-// ===== Bootstrap =====
+// ====== Bootstrap (home only) ======
 renderTopProfile();
 initProfileModal();
 updateBadges();
