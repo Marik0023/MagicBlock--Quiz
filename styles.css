@@ -751,11 +751,32 @@ img{max-width:100%; display:block}
   100%{ transform: translateX(170%); }
 }
 
-/* ===== FORCE: make shine 3x slower (Champion preview) ===== */
+/* ===== Shine: every 2s, slow movement (override) ===== */
+
+/* залишаємо м’яке "дихання" */
 .cardZone.isOpen .cardPreview::before{
-  animation-duration: 1.8s !important; /* було 7.6s */
+  animation-duration: 6s !important;
 }
 
+/* блиск кожні 2 секунди */
 .cardZone.isOpen .cardPreview::after{
-  animation-duration: 6.3s !important; /* було 8.1s */
+  animation-name: mbShine2s !important;
+  animation-duration: 2s !important;
+  animation-timing-function: ease-in-out !important;
+  animation-iteration-count: infinite !important;
+
+  /* щоб не було занадто "різко" */
+  opacity: .75 !important;
+  filter: blur(.6px) !important;
+
+  /* важливо: рух короткий => виглядає повільніше */
+  transform: translateX(-18%) rotate(-8deg);
+}
+
+@keyframes mbShine2s{
+  0%   { transform: translateX(-18%) rotate(-8deg); opacity: 0; }
+  20%  { opacity: .75; }
+  50%  { transform: translateX(18%)  rotate(-8deg); opacity: .85; }
+  80%  { opacity: .75; }
+  100% { transform: translateX(18%)  rotate(-8deg); opacity: 0; }
 }
