@@ -4,139 +4,146 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MagicBlock Quiz</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="app.js" defer></script>
 </head>
 
 <body data-require-profile="1">
-
   <!-- Background -->
   <div class="bg">
-    <video class="bg__video bg__video--home" autoplay muted loop playsinline
-      src="https://cdn.prod.website-files.com/67dd3f471f62a240dd544dd8%2F67dd41b5485dd4cf31eee3c0_Home_Beams-transcode.mp4"></video>
+    <video class="bg__video" autoplay muted loop playsinline>
+      <!-- якщо в тебе інший файл — просто зміни шлях -->
+      <source src="assets/bg.webm" type="video/webm" />
+      <source src="assets/bg.mp4" type="video/mp4" />
+    </video>
     <div class="bg__vignette"></div>
+    <div class="bg__grain"></div>
   </div>
 
   <!-- Topbar -->
-  <header class="topbar">
-    <a class="brand" href="./index.html" aria-label="MagicBlock home">
-      <video class="brand__logo" autoplay muted loop playsinline src="./assets/logo.webm"></video>
-    </a>
+  <div class="topbar">
+    <div class="topbar__inner">
+      <a class="brand" href="index.html" aria-label="Home">
+        <video class="brand__logo" autoplay muted loop playsinline>
+          <source src="assets/logo.webm" type="video/webm" />
+        </video>
+        <span class="brand__tag">Quiz</span>
+      </a>
 
-    <div class="topbar__right">
-      <button id="profileSlot" class="profile" type="button" aria-label="Profile" style="display:none">
-        <div class="profile__avatar">
-          <img id="profileAvatarImg" alt="Avatar" />
-          <div id="profileAvatarFallback" class="profile__fallback">MB</div>
-        </div>
-        <div id="profileName" class="profile__name"></div>
-      </button>
-    </div>
-  </header>
-
-  <main class="container">
-    <h1 class="hero__title">Pick a quiz.</h1>
-    <p class="hero__subtitle">Each quiz can be completed once.</p>
-
-    <section class="grid">
-
-      <!-- SONG -->
-      <article class="card" id="card-song" data-quiz="song">
-        <div class="card__completed" data-badge="song">✓ Completed</div>
-
-        <div class="card__media">
-          <img class="card__img" src="./assets/tiles/song.png" alt="Music icon">
-        </div>
-
-        <div class="card__title">QUIZ 1</div>
-        <div class="card__headline">Guess the Song by the Melody</div>
-        <div class="card__text">Listen to a short melody and choose the correct song.</div>
-
-        <div class="card__footer">
-          <a class="btn btn--next" data-start="song" href="./quizzes/song.html">Start</a>
-        </div>
-      </article>
-
-      <!-- MOVIE -->
-      <article class="card" id="card-movie" data-quiz="movie">
-        <div class="card__completed" data-badge="movie">✓ Completed</div>
-
-        <div class="card__media">
-          <img class="card__img" src="./assets/tiles/cinema.png" alt="Cinema icon">
-        </div>
-
-        <div class="card__title">QUIZ 2</div>
-        <div class="card__headline">Guess the Movie by the Frame</div>
-        <div class="card__text">Look at a frame and pick the correct movie.</div>
-
-        <div class="card__footer">
-          <a class="btn btn--next" data-start="movie" href="./quizzes/movie.html">Start</a>
-        </div>
-      </article>
-
-      <!-- MAGICBLOCK -->
-      <article class="card" id="card-magicblock" data-quiz="magicblock">
-        <div class="card__completed" data-badge="magicblock">✓ Completed</div>
-
-        <div class="card__media">
-          <img class="card__img" src="./assets/tiles/learn.png" alt="Knowledge icon">
-        </div>
-
-        <div class="card__title">QUIZ 3</div>
-        <div class="card__headline">How well do you know MagicBlock?</div>
-        <div class="card__text">10 questions about MagicBlock — pick A/B/C/D.</div>
-
-        <div class="card__footer">
-          <a class="btn btn--next" data-start="magicblock" href="./quizzes/magicblock.html">Start</a>
-        </div>
-      </article>
-
-    </section>
-
-    <!-- Champion button (shown only when all quizzes done) -->
-    <section id="championWrap" class="card" style="margin-top:16px; display:none;">
-      <div class="card__headline">Champion Card</div>
-      <div class="card__text">Complete all 3 quizzes to unlock the Champion card.</div>
-      <a class="btn btn--next" href="./champion.html">Generate Champion Card</a>
-    </section>
-
-    <footer class="footer">
-      <p class="footer__text">© <span id="year"></span> MagicBlock Quiz</p>
-    </footer>
-  </main>
-
-  <!-- Profile Gate -->
-  <div class="gate" id="profileGate" aria-hidden="true">
-    <div class="gate__card" role="dialog" aria-modal="true" aria-label="Create your profile">
-
-      <div class="gate__top">
+      <div id="profilePill" class="profilePill" title="Profile">
+        <div class="profilePill__avatar"><img alt="" /></div>
         <div>
-          <div class="gate__title">Create your profile</div>
-          <div class="gate__sub">This will appear on your result cards.</div>
+          <div class="profilePill__name" data-profile-name>Player</div>
+          <div class="profilePill__hint" data-profile-hint>Click to set</div>
         </div>
       </div>
-
-      <button class="gate__close" id="gateClose" type="button" aria-label="Close">×</button>
-
-      <div class="gate__content">
-        <label class="gate__avatarBox" id="gateAvatarBox">
-          <input id="gateAvatarInput" type="file" accept="image/*">
-          <img id="gateAvatarImg" alt="Avatar preview">
-          <div class="gate__avatarText" id="gateAvatarText">Upload Avatar</div>
-        </label>
-
-        <div style="width:100%;">
-          <input id="gateName" class="gate__name" placeholder="Enter your name" maxlength="24" />
-          <div class="gate__hint">Tip: you can click your profile later to change it.</div>
-
-          <div class="gate__actions">
-            <button id="gateStart" class="btn btn--next gate__start" type="button">Start</button>
-          </div>
-        </div>
-      </div>
-
     </div>
   </div>
 
-  <script src="./app.js" defer></script>
+  <main class="container">
+    <section class="hero">
+      <h1>Pick a quiz.</h1>
+      <p>Each quiz can be completed once.</p>
+    </section>
+
+    <section class="quizGrid">
+      <!-- Quiz 1 -->
+      <article class="quizCard">
+        <div class="badgeDone" data-badge="song" style="display:none;">✓ Completed</div>
+        <div class="quizCard__inner">
+          <div class="quizCard__media">
+            <img src="assets/covers/song.png" alt="Song quiz cover" />
+          </div>
+          <div class="quizCard__meta">QUIZ 1</div>
+          <div class="quizCard__title">Guess the Song by the Melody</div>
+          <p class="quizCard__desc">Listen to a short melody and choose the correct song.</p>
+
+          <div class="quizCard__footer">
+            <button class="btn" data-start="song">Start</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Quiz 2 -->
+      <article class="quizCard">
+        <div class="badgeDone" data-badge="movie" style="display:none;">✓ Completed</div>
+        <div class="quizCard__inner">
+          <div class="quizCard__media">
+            <img src="assets/covers/cinema.png" alt="Movie quiz cover" />
+          </div>
+          <div class="quizCard__meta">QUIZ 2</div>
+          <div class="quizCard__title">Guess the Movie by the Frame</div>
+          <p class="quizCard__desc">Look at a frame and pick the correct movie.</p>
+
+          <div class="quizCard__footer">
+            <button class="btn" data-start="movie">Start</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- Quiz 3 -->
+      <article class="quizCard">
+        <div class="badgeDone" data-badge="magicblock" style="display:none;">✓ Completed</div>
+        <div class="quizCard__inner">
+          <div class="quizCard__media">
+            <img src="assets/covers/learn.png" alt="MagicBlock quiz cover" />
+          </div>
+          <div class="quizCard__meta">QUIZ 3</div>
+          <div class="quizCard__title">How well do you know MagicBlock?</div>
+          <p class="quizCard__desc">10 questions about MagicBlock — pick A/B/C/D.</p>
+
+          <div class="quizCard__footer">
+            <button class="btn" data-start="magicblock">Start</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- Champion -->
+    <section id="championWrap" class="champion" style="display:none;">
+      <div class="champion__inner">
+        <div class="champion__title">Champion Card</div>
+        <p class="champion__desc">Complete all 3 quizzes to unlock the Champion card.</p>
+        <button id="openChampionBtn" class="btn">Generate Champion Card</button>
+      </div>
+    </section>
+
+    <div class="footerSmall">© MagicBlock Quiz <span id="year"></span></div>
+  </main>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalCard__head">
+        <div>
+          <h2 class="modalCard__title">Create your profile</h2>
+          <p class="modalCard__sub">This will appear on your result cards.</p>
+        </div>
+        <button id="profileCloseBtn" class="modalClose" aria-label="Close">×</button>
+      </div>
+
+      <div class="modalCard__body">
+        <div class="profileForm">
+          <div class="avatarBox">
+            <img id="profilePreview" alt="" />
+            <div class="avatarBox__label">Upload Avatar</div>
+          </div>
+
+          <div class="field">
+            <input id="profileName" class="input" placeholder="Enter your name" />
+            <div class="help">Tip: you can click your profile later to change it.</div>
+
+            <div class="btnRow">
+              <label class="btn btn--ghost" style="cursor:pointer;">
+                Choose image
+                <input id="profileFile" type="file" accept="image/*" style="display:none;">
+              </label>
+              <button id="profileSaveBtn" class="btn">Start</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
