@@ -25,7 +25,6 @@ forcePlayAll(".brand__logo");
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
   if (!pill) return;
-
   const img = pill.querySelector("img");
   const nameEl = pill.querySelector("[data-profile-name]");
   const hintEl = pill.querySelector("[data-profile-hint]");
@@ -85,7 +84,8 @@ function computeSummary(){
   sumCorrect.textContent = String(correct);
   sumAcc.textContent = `${acc}%`;
 
-  const unlocked = doneCount === 3 && results.length === 3 && !!p;
+  // Генерувати можна тільки якщо є профіль + всі 3 done + всі 3 result
+  const unlocked = !!p && doneCount === 3 && results.length === 3;
   genBtn.disabled = !unlocked;
 
   return { unlocked, total, correct, acc, profile: p };
@@ -113,18 +113,17 @@ async function drawChampionCard(summary){
 
   ctx.clearRect(0,0,W,H);
 
-  // bg
+  // background
   const g = ctx.createLinearGradient(0,0,W,H);
   g.addColorStop(0, "#0b0d12");
   g.addColorStop(1, "#05060a");
   ctx.fillStyle = g;
   ctx.fillRect(0,0,W,H);
 
-  // outer
+  // frames
   ctx.fillStyle = "rgba(255,255,255,0.06)";
   roundRect(ctx, 70, 70, W-140, H-140, 70, true, false);
 
-  // inner
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   roundRect(ctx, 110, 110, W-220, H-220, 64, true, false);
 
@@ -138,7 +137,6 @@ async function drawChampionCard(summary){
 
   const name = summary.profile?.name || "Player";
   ctx.font = "900 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.fillText(name, 260, 520);
 
   // stats
@@ -170,29 +168,23 @@ function roundRect(ctx, x, y, w, h, r, fill, stroke){
 }
 
 async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
-  // base
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI*2);
   ctx.closePath();
-  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
   ctx.fill();
   ctx.clip();
 
-  // image (if exists)
   if (dataUrl && dataUrl.startsWith("data:")){
     try{
       const img = await loadImage(dataUrl);
       const size = r*2;
       ctx.drawImage(img, cx-r, cy-r, size, size);
-    }catch{
-      // ignore
-    }
+    }catch{}
   }
-
   ctx.restore();
 
-  // stroke
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI*2);
   ctx.closePath();
@@ -204,8 +196,6 @@ async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
 function loadImage(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
-    // data: ок без CORS, але нехай буде безпечно
-    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
