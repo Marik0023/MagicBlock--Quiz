@@ -7,8 +7,6 @@ const AVATAR_KEY= "mb_avatar_song";
 
 const letters = ["A", "B", "C", "D"];
 
-// Для старту всюди placeholder cover.
-// Потім ти просто міняєш cover на свої картинки (або зробимо авто-обкладинки).
 const questions = [
   { src: "../assets/songs/01.mp3", title: "Guess the song", cover: "../assets/covers/placeholder.jpg", choices: ["Correct (edit me)", "Wrong", "Wrong", "Wrong"], correctIndex: 0 },
   { src: "../assets/songs/02.mp3", title: "Guess the song", cover: "../assets/covers/placeholder.jpg", choices: ["Wrong", "Correct (edit me)", "Wrong", "Wrong"], correctIndex: 1 },
@@ -114,6 +112,14 @@ function setNextText(){
   nextBtn.textContent = (idx === questions.length - 1) ? "Finish →" : "Next →";
 }
 
+/* ✅ make Next pop/glow */
+function popNext(){
+  nextBtn.classList.remove("is-pop");
+  // restart animation reliably
+  void nextBtn.offsetWidth;
+  nextBtn.classList.add("is-pop");
+}
+
 function clearSelectionUI(){
   [...choicesEl.querySelectorAll("button")].forEach(b => b.classList.remove("selected"));
 }
@@ -124,7 +130,9 @@ function render(){
 
   qCounter.textContent = `Question ${idx + 1} of ${questions.length}`;
   statusEl.textContent = `Progress: ${idx} / ${questions.length}`;
+
   nextBtn.style.display = "none";
+  nextBtn.classList.remove("is-pop");
 
   trackTitle.textContent = q.title || "Guess the song";
   cover.src = q.cover || "../assets/covers/placeholder.jpg";
@@ -156,12 +164,12 @@ function pick(i){
 
   setNextText();
   nextBtn.style.display = "inline-flex";
+  popNext();
 }
 
 function next(){
   if (selectedIndex === null) return;
 
-  // оцінювання ТІЛЬКИ тут
   const q = questions[idx];
   if (selectedIndex === q.correctIndex) correct += 1;
 
@@ -202,4 +210,63 @@ function showResult(showLockText){
 
   if (showLockText){
     lockedMsg.style.display = "block";
-    lockedMsg.textCo
+    lockedMsg.textContent = "Quiz completed. You can’t take it again.";
+  }
+
+  loadProfile();
+}
+
+function boot(){
+  // Player events
+  playBtn.addEventListener("click", () => {
+    if (audio.paused) tryPlay(); else audio.pause();
+  });
+
+  audio.addEventListener("play", setPlayIcon);
+  audio.addEventListener("pause", setPlayIcon);
+  audio.addEventListener("timeupdate", () => { if (!dragging) syncTimeUI(); });
+  audio.addEventListener("loadedmetadata", syncTimeUI);
+  audio.addEventListener("ended", () => { setPlayIcon(); });
+
+  vol.addEventListener("input", () => { audio.volume = Number(vol.value); });
+  audio.volume = Number(vol.value);
+
+  bar.addEventListener("click", (e) => seekToClientX(e.clientX));
+  bar.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    bar.setPointerCapture(e.pointerId);
+    seekToClientX(e.clientX);
+  });
+  bar.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    seekToClientX(e.clientX);
+  });
+  bar.addEventListener("pointerup", () => { dragging = false; });
+  bar.addEventListener("pointercancel", () => { dragging = false; });
+
+  if (localStorage.getItem(DONE_KEY) === "1"){
+    lockedMsg.style.display = "block";
+    lockedMsg.textContent = "You already completed this quiz.";
+    showResult(false);
+    return;
+  }
+
+  nextBtn.addEventListener("click", next);
+  playerName.addEventListener("input", saveProfile);
+
+  avatarFile.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      localStorage.setItem(AVATAR_KEY, dataUrl);
+      avatarPreview.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  render();
+}
+
+boot();
