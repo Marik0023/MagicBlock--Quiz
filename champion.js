@@ -1,5 +1,3 @@
-// champion.js (UPDATED - remove right logo, bigger left logo, add subtle shine)
-
 const MB_KEYS = {
   profile: "mb_profile",
   doneSong: "mb_done_song",
@@ -73,7 +71,6 @@ function getTierByCorrect(correct) {
   if (correct >= 15) return "silver";
   return "bronze";
 }
-
 const TIER_THEME = {
   gold:   { label: "Gold",   base: "#d2a24d", dark: "#b37f2f" },
   silver: { label: "Silver", base: "#bdbdbd", dark: "#9a9a9a" },
@@ -130,27 +127,25 @@ dlBtn?.addEventListener("click", () => {
   a.click();
 });
 
-// ====== Canvas assets cache ======
+// ===== Canvas assets cache =====
 let _noisePattern = null;
-let _logoFrame = null;
+let _logoVideo = null;
 
-// ====== DRAW (LANDSCAPE ONLY) ======
 async function drawChampionCard(summary) {
   if (!cardCanvas) return;
 
-  // canvas = card only
   const W = 1400;
   const H = 800;
 
-  if (cardCanvas.width !== W) cardCanvas.width = W;
-  if (cardCanvas.height !== H) cardCanvas.height = H;
+  cardCanvas.width = W;
+  cardCanvas.height = H;
 
   const ctx = cardCanvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
   const theme = TIER_THEME[summary.tier] || TIER_THEME.bronze;
 
-  // --- card background (tier gradient) ---
+  // --- card background ---
   const g = ctx.createLinearGradient(0, 0, W, H);
   g.addColorStop(0, theme.base);
   g.addColorStop(1, theme.dark);
@@ -164,14 +159,13 @@ async function drawChampionCard(summary) {
   ctx.fillStyle = hi;
   roundRect(ctx, 0, 0, W, H, 80, true, false);
 
-  // mesh waves on card
+  // mesh + grain
   ctx.save();
   roundedRectPath(ctx, 0, 0, W, H, 80);
   ctx.clip();
   drawMesh(ctx, W, H, 0.14);
   ctx.restore();
 
-  // grain
   ensureNoisePattern(ctx);
   ctx.save();
   ctx.globalAlpha = 0.08;
@@ -179,8 +173,7 @@ async function drawChampionCard(summary) {
   roundRect(ctx, 0, 0, W, H, 80, true, false);
   ctx.restore();
 
-  // ----- subtle SHINE (glint) -----
-  // diagonal band (screen blend) + soft top highlight
+  // ----- subtle SHINE -----
   ctx.save();
   roundedRectPath(ctx, 0, 0, W, H, 80);
   ctx.clip();
@@ -190,15 +183,14 @@ async function drawChampionCard(summary) {
 
   const shine = ctx.createLinearGradient(-W * 0.2, H * 0.25, W * 1.2, H * 0.75);
   shine.addColorStop(0.00, "rgba(255,255,255,0.00)");
-  shine.addColorStop(0.40, "rgba(255,255,255,0.00)");
-  shine.addColorStop(0.50, "rgba(255,255,255,0.14)");
-  shine.addColorStop(0.58, "rgba(255,255,255,0.06)");
-  shine.addColorStop(0.70, "rgba(255,255,255,0.00)");
+  shine.addColorStop(0.45, "rgba(255,255,255,0.00)");
+  shine.addColorStop(0.52, "rgba(255,255,255,0.16)");
+  shine.addColorStop(0.60, "rgba(255,255,255,0.06)");
+  shine.addColorStop(0.72, "rgba(255,255,255,0.00)");
   shine.addColorStop(1.00, "rgba(255,255,255,0.00)");
   ctx.fillStyle = shine;
   ctx.fillRect(0, 0, W, H);
 
-  // soft top-left bloom
   ctx.globalAlpha = 0.22;
   const bloom = ctx.createRadialGradient(W * 0.18, H * 0.18, 40, W * 0.18, H * 0.18, H * 0.55);
   bloom.addColorStop(0, "rgba(255,255,255,0.20)");
@@ -209,12 +201,11 @@ async function drawChampionCard(summary) {
   ctx.restore();
   ctx.globalCompositeOperation = "source-over";
 
-  // border (dark outside)
+  // borders
   ctx.lineWidth = 3;
   ctx.strokeStyle = "rgba(0,0,0,0.35)";
   roundRect(ctx, 0, 0, W, H, 80, false, true);
 
-  // inner glossy border (light)
   ctx.lineWidth = 2;
   ctx.strokeStyle = "rgba(255,255,255,0.16)";
   roundRect(ctx, 6, 6, W - 12, H - 12, 76, false, true);
@@ -222,24 +213,22 @@ async function drawChampionCard(summary) {
   const pad = 70;
 
   // ===== HEADER =====
-  // LEFT: logo (slightly bigger)
-  // was: 230x92
-  await drawLogo(ctx, pad, pad - 36, 285, 112, 0.95);
+  // LEFT: icon-only (crop from logo.webm), bigger
+  await drawLogoMark(ctx, pad, pad - 40, 120, 0.95);
 
   // CENTER: title
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = "800 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textAlign = "center";
-  ctx.textBaseline = "alphabetic";
   applyTextShadow(ctx, 0.35, 10, 0, 3);
   ctx.fillText("Champion Card", W / 2, pad + 6);
   clearTextShadow(ctx);
   ctx.restore();
 
-  // RIGHT logo removed ✅
+  // ✅ RIGHT LOGO: intentionally removed (нічого не малюємо)
 
-  // ===== AVATAR BLOCK =====
+  // ===== AVATAR =====
   const ax = pad;
   const ay = 210;
   const as = 360;
@@ -253,25 +242,15 @@ async function drawChampionCard(summary) {
   roundRect(ctx, ax + 8, ay + 8, as - 16, as - 16, ar - 10, true, false);
 
   const avatarSrc = summary.profile?.avatar || "";
-  await drawAvatarRounded(
-    ctx,
-    avatarSrc,
-    ax + 12,
-    ay + 12,
-    as - 24,
-    as - 24,
-    ar - 14
-  );
+  await drawAvatarRounded(ctx, avatarSrc, ax + 12, ay + 12, as - 24, as - 24, ar - 14);
 
-  // ===== TEXT BLOCK =====
+  // ===== TEXT =====
   const tx = 520;
-
   const name = (summary.profile?.name || "Player").trim();
   const scoreText = `${summary.correct} / ${summary.total}`;
   const tierLabel = theme.label;
 
   let y = 260;
-
   drawLabelValue(ctx, tx, y, "Your Name", name);
   y += 195;
 
@@ -281,7 +260,6 @@ async function drawChampionCard(summary) {
 
   drawDivider(ctx, tx, y - 40, W - pad - tx);
 
-  // Card status
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.80)";
   ctx.font = "650 42px system-ui, -apple-system, Segoe UI, Roboto, Arial";
@@ -295,7 +273,7 @@ async function drawChampionCard(summary) {
   clearTextShadow(ctx);
   ctx.restore();
 
-  // Accuracy bottom-left
+  // Accuracy
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.40)";
   ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
@@ -305,7 +283,6 @@ async function drawChampionCard(summary) {
 
 function drawLabelValue(ctx, x, y, label, value) {
   ctx.save();
-
   ctx.fillStyle = "rgba(255,255,255,0.76)";
   ctx.font = "700 38px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   applyTextShadow(ctx, 0.22, 8, 0, 2);
@@ -344,19 +321,28 @@ function clearTextShadow(ctx) {
   ctx.shadowOffsetY = 0;
 }
 
-// ===== Logo drawing =====
-async function drawLogo(ctx, x, y, w, h, opacity = 0.95) {
+// ===== LOGO MARK (icon-only crop from logo.webm) =====
+async function drawLogoMark(ctx, x, y, size, opacity = 0.95) {
   try {
-    if (!_logoFrame) {
-      _logoFrame = await loadVideoFrame("assets/logo.webm", 0.0);
-    }
+    const v = await getLogoVideo();
+    const vh = v.videoHeight || size;
+    const sw = vh;     // take left square
+    const sh = vh;
+    const sx = 0;
+    const sy = 0;
+
     ctx.save();
     ctx.globalAlpha = opacity;
-    ctx.drawImage(_logoFrame, x, y, w, h);
+    ctx.drawImage(v, sx, sy, sw, sh, x, y, size, size);
     ctx.restore();
   } catch {
-    // fallback: do nothing
+    // ignore
   }
+}
+async function getLogoVideo() {
+  if (_logoVideo) return _logoVideo;
+  _logoVideo = await loadVideoFrame("assets/logo.webm", 0.0);
+  return _logoVideo;
 }
 
 function loadVideoFrame(src, time = 0) {
@@ -383,7 +369,7 @@ function loadVideoFrame(src, time = 0) {
   });
 }
 
-// ===== Drawing helpers =====
+// ===== geometry helpers =====
 function roundedRectPath(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -394,7 +380,6 @@ function roundedRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
 }
-
 function roundRect(ctx, x, y, w, h, r, fill, stroke) {
   roundedRectPath(ctx, x, y, w, h, r);
   if (fill) ctx.fill();
@@ -440,7 +425,6 @@ function drawMesh(ctx, W, H, alpha = 0.12) {
     }
     ctx.stroke();
   }
-
   ctx.restore();
 }
 
@@ -461,7 +445,6 @@ function ensureNoisePattern(ctx) {
     img.data[i + 3] = 255;
   }
   nctx.putImageData(img, 0, 0);
-
   _noisePattern = ctx.createPattern(n, "repeat");
 }
 
