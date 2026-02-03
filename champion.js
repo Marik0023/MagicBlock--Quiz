@@ -1,3 +1,10 @@
+// champion.js (FINAL)
+// - card landscape 1400x800
+// - tier: Gold/Silver/Bronze by correct answers
+// - top-right tier badge, bottom-center ID chip
+// - slower UI shine handled in CSS (styles.css)
+// - 360deg flip on Generate + back side full logo video
+
 const MB_KEYS = {
   profile: "mb_profile",
   doneSong: "mb_done_song",
@@ -6,7 +13,7 @@ const MB_KEYS = {
   resSong: "mb_result_song",
   resMovie: "mb_result_movie",
   resMagic: "mb_result_magicblock",
-  champId: "mb_champ_id",
+  champId: "mb_champion_id",
 };
 
 function safeJSONParse(v, fallback = null) {
@@ -24,8 +31,10 @@ function forcePlayAll(selector) {
   window.addEventListener("click", tryPlay, { once: true });
   window.addEventListener("touchstart", tryPlay, { once: true });
 }
+
 forcePlayAll(".bg__video");
 forcePlayAll(".brand__logo");
+forcePlayAll(".cardBackLogo__vid");
 
 // ===== Top profile pill =====
 function renderTopProfile() {
@@ -63,11 +72,11 @@ const genBtn = document.getElementById("genChampBtn");
 const cardZone = document.getElementById("cardZone");
 const cardCanvas = document.getElementById("cardCanvas");
 const dlBtn = document.getElementById("dlBtn");
+const cardFlip = document.getElementById("cardFlip");
 
 function isDone(k) { return localStorage.getItem(k) === "1"; }
 function loadResult(key) { return safeJSONParse(localStorage.getItem(key), null); }
 
-// ===== Tier logic =====
 function getTierByCorrect(correct) {
   if (correct >= 25) return "gold";
   if (correct >= 15) return "silver";
@@ -76,34 +85,27 @@ function getTierByCorrect(correct) {
 
 const TIER_THEME = {
   gold:   { label: "GOLD",   base: "#d2a24d", dark: "#b37f2f" },
-  silver: { label: "SILVER", base: "#bdbdbd", dark: "#8f8f8f" },
-  bronze: { label: "BRONZE", base: "#9b561e", dark: "#6e3610" },
+  silver: { label: "SILVER", base: "#bdbdbd", dark: "#9a9a9a" },
+  bronze: { label: "BRONZE", base: "#9b561e", dark: "#7a3f13" },
 };
 
-// ===== ID (keeps same after first gen) =====
-function randomIdPart(len = 6) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out = "";
-  const rnd = (n) => Math.floor(Math.random() * n);
-
-  // try crypto if available
-  if (window.crypto?.getRandomValues) {
-    const buf = new Uint8Array(len);
-    crypto.getRandomValues(buf);
-    for (let i = 0; i < len; i++) out += chars[buf[i] % chars.length];
-    return out;
-  }
-
-  for (let i = 0; i < len; i++) out += chars[rnd(chars.length)];
-  return out;
-}
-
-function getOrCreateChampionId() {
+function getOrCreateChampionId(){
   const existing = localStorage.getItem(MB_KEYS.champId);
-  if (existing) return existing;
-  const id = `MB-CHAMP-${randomIdPart(6)}`;
+  if (existing && existing.startsWith("MB-CHAMP-")) return existing;
+
+  const code = randCode(6);
+  const id = `MB-CHAMP-${code}`;
   localStorage.setItem(MB_KEYS.champId, id);
   return id;
+
+  function randCode(n){
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let out = "";
+    for (let i = 0; i < n; i++){
+      out += chars[(Math.random() * chars.length) | 0];
+    }
+    return out;
+  }
 }
 
 function computeSummary() {
@@ -144,9 +146,18 @@ genBtn?.addEventListener("click", async () => {
   const s = computeSummary();
   if (!s.unlocked) return;
 
+  // show zone first (so flip is visible)
+  cardZone?.classList.add("isOpen");
+
+  // flip animation
+  if (cardFlip){
+    cardFlip.classList.remove("isFlipping");
+    void cardFlip.offsetWidth; // restart
+    cardFlip.classList.add("isFlipping");
+  }
+
   await drawChampionCard(s);
 
-  cardZone?.classList.add("isOpen");
   cardZone?.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -166,20 +177,18 @@ let _logoFrame = null;
 async function drawChampionCard(summary) {
   if (!cardCanvas) return;
 
-  // Landscape card
   const W = 1400;
   const H = 800;
 
-  if (cardCanvas.width !== W) cardCanvas.width = W;
-  if (cardCanvas.height !== H) cardCanvas.height = H;
+  cardCanvas.width = W;
+  cardCanvas.height = H;
 
   const ctx = cardCanvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
   const theme = TIER_THEME[summary.tier] || TIER_THEME.bronze;
-  const pad = 70;
 
-  // --- background gradient by tier ---
+  // --- card bg gradient ---
   const g = ctx.createLinearGradient(0, 0, W, H);
   g.addColorStop(0, theme.base);
   g.addColorStop(1, theme.dark);
@@ -187,9 +196,9 @@ async function drawChampionCard(summary) {
   roundRect(ctx, 0, 0, W, H, 80, true, false);
 
   // soft highlight
-  const hi = ctx.createRadialGradient(W * 0.50, H * 0.35, 120, W * 0.55, H * 0.55, H * 0.95);
-  hi.addColorStop(0, "rgba(255,255,255,0.20)");
-  hi.addColorStop(1, "rgba(0,0,0,0.14)");
+  const hi = ctx.createRadialGradient(W * 0.48, H * 0.35, 120, W * 0.55, H * 0.55, H * 0.95);
+  hi.addColorStop(0, "rgba(255,255,255,0.16)");
+  hi.addColorStop(1, "rgba(0,0,0,0.12)");
   ctx.fillStyle = hi;
   roundRect(ctx, 0, 0, W, H, 80, true, false);
 
@@ -203,39 +212,27 @@ async function drawChampionCard(summary) {
   // grain
   ensureNoisePattern(ctx);
   ctx.save();
-  ctx.globalAlpha = 0.09;
+  ctx.globalAlpha = 0.08;
   ctx.fillStyle = _noisePattern;
   roundRect(ctx, 0, 0, W, H, 80, true, false);
   ctx.restore();
 
-  // ===== stronger STATIC shine (for PNG) =====
+  // subtle static shine inside canvas (CSS has animated shine)
   ctx.save();
   roundedRectPath(ctx, 0, 0, W, H, 80);
   ctx.clip();
-
   ctx.globalCompositeOperation = "screen";
-  ctx.globalAlpha = 0.55;
+  ctx.globalAlpha = 0.30;
 
-  // wider diagonal sweep
-  const shine = ctx.createLinearGradient(-W * 0.4, H * 0.15, W * 1.4, H * 0.85);
+  const shine = ctx.createLinearGradient(-W * 0.2, H * 0.25, W * 1.2, H * 0.75);
   shine.addColorStop(0.00, "rgba(255,255,255,0.00)");
-  shine.addColorStop(0.40, "rgba(255,255,255,0.00)");
-  shine.addColorStop(0.50, "rgba(255,255,255,0.18)");
-  shine.addColorStop(0.56, "rgba(255,255,255,0.42)");
-  shine.addColorStop(0.62, "rgba(255,255,255,0.14)");
-  shine.addColorStop(0.70, "rgba(255,255,255,0.00)");
+  shine.addColorStop(0.45, "rgba(255,255,255,0.00)");
+  shine.addColorStop(0.52, "rgba(255,255,255,0.16)");
+  shine.addColorStop(0.60, "rgba(255,255,255,0.06)");
+  shine.addColorStop(0.75, "rgba(255,255,255,0.00)");
   shine.addColorStop(1.00, "rgba(255,255,255,0.00)");
   ctx.fillStyle = shine;
   ctx.fillRect(0, 0, W, H);
-
-  // extra top bloom
-  ctx.globalAlpha = 0.26;
-  const bloom = ctx.createRadialGradient(W * 0.20, H * 0.15, 40, W * 0.20, H * 0.15, H * 0.62);
-  bloom.addColorStop(0, "rgba(255,255,255,0.28)");
-  bloom.addColorStop(1, "rgba(255,255,255,0.00)");
-  ctx.fillStyle = bloom;
-  ctx.fillRect(0, 0, W, H);
-
   ctx.restore();
   ctx.globalCompositeOperation = "source-over";
 
@@ -248,24 +245,25 @@ async function drawChampionCard(summary) {
   ctx.strokeStyle = "rgba(255,255,255,0.16)";
   roundRect(ctx, 6, 6, W - 12, H - 12, 76, false, true);
 
-  // ===== HEADER =====
-  // left logo bigger
-  await drawLogo(ctx, pad, pad - 38, 310, 122, 0.98);
+  const pad = 70;
 
-  // center title
+  // LEFT logo (bigger)
+  await drawLogo(ctx, pad, pad - 36, 285, 112, 0.95);
+
+  // CENTER title
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = "900 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textAlign = "center";
   applyTextShadow(ctx, 0.35, 10, 0, 3);
-  ctx.fillText("Champion Card", W / 2, pad + 8);
+  ctx.fillText("Champion Card", W / 2, pad + 6);
   clearTextShadow(ctx);
   ctx.restore();
 
-  // top-right STATUS pill only (ID removed from here)
-  drawStatusPill(ctx, W - pad - 220, pad - 44, 220, 62, theme.label);
+  // TOP RIGHT tier badge
+  drawTierPill(ctx, W - pad - 230, pad - 32, 230, 78, theme.label);
 
-  // ===== AVATAR =====
+  // AVATAR
   const ax = pad;
   const ay = 210;
   const as = 360;
@@ -281,24 +279,18 @@ async function drawChampionCard(summary) {
   const avatarSrc = summary.profile?.avatar || "";
   await drawAvatarRounded(ctx, avatarSrc, ax + 12, ay + 12, as - 24, as - 24, ar - 14);
 
-  // ===== TEXT =====
+  // TEXT
   const tx = 520;
+
   const name = (summary.profile?.name || "Player").trim();
   const scoreText = `${summary.correct} / ${summary.total}`;
 
   let y = 260;
-
   drawLabelValue(ctx, tx, y, "Your Name", name);
-  y += 195;
 
+  y += 195;
   drawDivider(ctx, tx, y - 40, W - pad - tx);
   drawLabelValue(ctx, tx, y, "Total Score", scoreText);
-  y += 195;
-
-  drawDivider(ctx, tx, y - 40, W - pad - tx);
-
-  // ===== ID TABLE replaces "Card status" line =====
-  drawIdTable(ctx, tx, y - 12, 520, 84, summary.champId);
 
   // Accuracy bottom-left
   ctx.save();
@@ -306,46 +298,42 @@ async function drawChampionCard(summary) {
   ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText(`Accuracy: ${summary.acc}%`, pad, H - 60);
   ctx.restore();
+
+  // ID chip bottom-center (instead of “Card status” text block)
+  drawIdChip(ctx, W / 2 - 260, H - 160, 520, 78, `ID: ${summary.champId}`);
 }
 
-function drawStatusPill(ctx, x, y, w, h, label) {
+function drawTierPill(ctx, x, y, w, h, label){
   ctx.save();
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillStyle = "rgba(0,0,0,0.30)";
   ctx.strokeStyle = "rgba(255,255,255,0.18)";
   ctx.lineWidth = 2;
-  roundRect(ctx, x, y, w, h, 28, true, true);
+  roundRect(ctx, x, y, w, h, 999, true, true);
 
   ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "950 34px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.font = "950 36px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  applyTextShadow(ctx, 0.28, 10, 0, 2);
-  ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+  applyTextShadow(ctx, 0.35, 10, 0, 3);
+  ctx.fillText(label, x + w/2, y + h/2 + 1);
   clearTextShadow(ctx);
-
   ctx.restore();
 }
 
-function drawIdTable(ctx, x, y, w, h, id) {
+function drawIdChip(ctx, x, y, w, h, text){
   ctx.save();
-
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.strokeStyle = "rgba(255,255,255,0.14)";
   ctx.lineWidth = 2;
-  roundRect(ctx, x, y, w, h, 26, true, true);
+  roundRect(ctx, x, y, w, h, 18, true, true);
 
-  ctx.fillStyle = "rgba(255,255,255,0.72)";
-  ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("ID:", x + 22, y + 52);
-
-  ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "950 34px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  applyTextShadow(ctx, 0.22, 8, 0, 2);
-  ctx.fillText(id, x + 70, y + 52);
+  ctx.fillStyle = "rgba(255,255,255,0.90)";
+  ctx.font = "900 30px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  applyTextShadow(ctx, 0.30, 10, 0, 3);
+  ctx.fillText(text, x + w/2, y + h/2 + 1);
   clearTextShadow(ctx);
-
   ctx.restore();
 }
 
@@ -390,18 +378,16 @@ function clearTextShadow(ctx) {
   ctx.shadowOffsetY = 0;
 }
 
-// ===== Logo drawing =====
+// ===== Logo drawing (video frame) =====
 async function drawLogo(ctx, x, y, w, h, opacity = 0.95) {
   try {
-    if (!_logoFrame) {
-      _logoFrame = await loadVideoFrame("assets/logo.webm", 0.0);
-    }
+    if (!_logoFrame) _logoFrame = await loadVideoFrame("assets/logo.webm", 0.0);
     ctx.save();
     ctx.globalAlpha = opacity;
     ctx.drawImage(_logoFrame, x, y, w, h);
     ctx.restore();
   } catch {
-    // no-op
+    // ignore
   }
 }
 
@@ -429,7 +415,7 @@ function loadVideoFrame(src, time = 0) {
   });
 }
 
-// ===== Helpers =====
+// ===== Drawing helpers =====
 function roundedRectPath(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -440,6 +426,7 @@ function roundedRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
 }
+
 function roundRect(ctx, x, y, w, h, r, fill, stroke) {
   roundedRectPath(ctx, x, y, w, h, r);
   if (fill) ctx.fill();
@@ -574,4 +561,3 @@ function loadImage(src) {
 
 // initial render
 computeSummary();
- 
