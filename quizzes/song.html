@@ -21,37 +21,59 @@
   </div>
 
   <header class="topbar">
-    <div class="brand">
+    <a class="brand" href="../index.html" aria-label="Go to Home">
       <video class="brand__logo" autoplay muted loop playsinline preload="auto">
         <source src="../assets/logo.webm" type="video/webm">
         <source src="../assets/logo.mp4" type="video/mp4">
       </video>
-      <span class="brand__name">MagicBlock</span>
-    </div>
+    </a>
   </header>
 
   <main class="container">
     <section class="card" style="max-width:900px;margin:0 auto;">
       <h1 style="margin:0;font-size:32px;">Guess the Song by the Melody</h1>
-      <p class="small">10 questions • A/B/C/D • If you answer wrong, it skips forward.</p>
+      <p class="small">10 questions • A/B/C/D • Pick an answer, then press Next.</p>
 
       <div id="lockedMsg" class="small" style="display:none;"></div>
 
       <div id="quizUI">
         <p id="qCounter" class="small"></p>
 
-        <audio id="audio" controls style="width:100%;margin-top:6px;"></audio>
+        <!-- hidden audio element -->
+        <audio id="audio" preload="auto"></audio>
+
+        <!-- custom player -->
+        <div class="player" id="player">
+          <div class="player__cover">
+            <img id="cover" src="../assets/covers/placeholder.jpg" alt="Cover">
+          </div>
+
+          <div class="player__main">
+            <div class="player__top">
+              <div class="player__title" id="trackTitle">Guess the song</div>
+              <div class="player__time"><span id="cur">0:00</span> / <span id="dur">0:00</span></div>
+            </div>
+
+            <div class="player__controls">
+              <button class="pbtn" id="playBtn" type="button" aria-label="Play/Pause">▶</button>
+
+              <div class="bar" id="bar" aria-label="Seek bar">
+                <div class="bar__fill" id="fill"></div>
+                <div class="bar__knob" id="knob"></div>
+              </div>
+
+              <input class="vol" id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume">
+            </div>
+          </div>
+        </div>
 
         <div id="choices" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;"></div>
 
-        <p id="feedback" class="small"></p>
-
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
-          <button id="next" class="btn" type="button" style="display:none;">Next</button>
-          <a class="btn" href="../index.html">← Back</a>
+          <button id="next" class="btn btn--next" type="button" style="display:none;">Next →</button>
         </div>
 
-        <p id="status" class="small">Score: 0 / 0</p>
+        <p id="status" class="small"></p>
       </div>
 
       <div id="resultUI" style="display:none;">
@@ -95,9 +117,7 @@
             <a class="btn" href="../index.html">Back to Home</a>
           </div>
 
-          <p class="small">
-            Note: this quiz is one-time per device/browser.
-          </p>
+          <p class="small">Note: one-time per device/browser.</p>
         </div>
       </div>
     </section>
