@@ -25,10 +25,12 @@ forcePlayAll(".brand__logo");
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
   if (!pill) return;
+
   const img = pill.querySelector("img");
   const nameEl = pill.querySelector("[data-profile-name]");
   const hintEl = pill.querySelector("[data-profile-hint]");
   const p = getProfile();
+
   if (!p){
     if (img) img.src = "";
     if (nameEl) nameEl.textContent = "No profile";
@@ -36,6 +38,7 @@ function renderTopProfile(){
     pill.addEventListener("click", () => location.href = "index.html");
     return;
   }
+
   if (img) img.src = p.avatar || "";
   if (nameEl) nameEl.textContent = p.name || "Player";
   if (hintEl) hintEl.textContent = "Edit on Home";
@@ -55,10 +58,7 @@ const cardCanvas = document.getElementById("cardCanvas");
 const dlBtn = document.getElementById("dlBtn");
 
 function isDone(k){ return localStorage.getItem(k) === "1"; }
-
-function loadResult(key){
-  return safeJSONParse(localStorage.getItem(key), null);
-}
+function loadResult(key){ return safeJSONParse(localStorage.getItem(key), null); }
 
 function computeSummary(){
   const p = getProfile();
@@ -87,6 +87,7 @@ function computeSummary(){
 
   const unlocked = doneCount === 3 && results.length === 3 && !!p;
   genBtn.disabled = !unlocked;
+
   return { unlocked, total, correct, acc, profile: p };
 }
 
@@ -111,34 +112,43 @@ async function drawChampionCard(summary){
   const W = cardCanvas.width, H = cardCanvas.height;
 
   ctx.clearRect(0,0,W,H);
+
+  // bg
   const g = ctx.createLinearGradient(0,0,W,H);
   g.addColorStop(0, "#0b0d12");
   g.addColorStop(1, "#05060a");
   ctx.fillStyle = g;
   ctx.fillRect(0,0,W,H);
 
+  // outer
   ctx.fillStyle = "rgba(255,255,255,0.06)";
   roundRect(ctx, 70, 70, W-140, H-140, 70, true, false);
 
+  // inner
   ctx.fillStyle = "rgba(0,0,0,0.28)";
   roundRect(ctx, 110, 110, W-220, H-220, 64, true, false);
 
+  // title
   ctx.fillStyle = "rgba(255,255,255,0.92)";
   ctx.font = "950 86px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText("MagicBlock Champion", 160, 240);
 
-  const name = summary.profile?.name || "Player";
-  ctx.font = "900 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(name, 260, 520);
-
+  // avatar + name
   await drawAvatarCircle(ctx, summary.profile?.avatar || "", 160, 472, 74);
 
+  const name = summary.profile?.name || "Player";
+  ctx.font = "900 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillStyle = "rgba(255,255,255,0.92)";
+  ctx.fillText(name, 260, 520);
+
+  // stats
   ctx.font = "800 46px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillStyle = "rgba(255,255,255,0.86)";
   ctx.fillText(`Correct: ${summary.correct} / ${summary.total}`, 160, 650);
   ctx.fillStyle = "rgba(255,255,255,0.70)";
   ctx.fillText(`Accuracy: ${summary.acc}%`, 160, 725);
 
+  // footer pill
   ctx.fillStyle = "rgba(255,255,255,0.10)";
   roundRect(ctx, 160, H-220, W-320, 96, 48, true, false);
   ctx.fillStyle = "rgba(255,255,255,0.88)";
@@ -158,22 +168,31 @@ function roundRect(ctx, x, y, w, h, r, fill, stroke){
   if (fill) ctx.fill();
   if (stroke) ctx.stroke();
 }
+
 async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
+  // base
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI*2);
   ctx.closePath();
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
   ctx.fill();
   ctx.clip();
 
+  // image (if exists)
   if (dataUrl && dataUrl.startsWith("data:")){
-    const img = await loadImage(dataUrl);
-    const size = r*2;
-    ctx.drawImage(img, cx-r, cy-r, size, size);
+    try{
+      const img = await loadImage(dataUrl);
+      const size = r*2;
+      ctx.drawImage(img, cx-r, cy-r, size, size);
+    }catch{
+      // ignore
+    }
   }
+
   ctx.restore();
 
+  // stroke
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI*2);
   ctx.closePath();
@@ -181,9 +200,12 @@ async function drawAvatarCircle(ctx, dataUrl, cx, cy, r){
   ctx.lineWidth = 3;
   ctx.stroke();
 }
+
 function loadImage(src){
   return new Promise((resolve, reject) => {
     const img = new Image();
+    // data: ок без CORS, але нехай буде безпечно
+    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
