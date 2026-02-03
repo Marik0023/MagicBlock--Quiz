@@ -617,3 +617,72 @@ img{max-width:100%; display:block}
   font-weight:700;
   font-size: 13px;
 }
+
+/* ===== Card pop-in animation ===== */
+.cardPreview{
+  position: relative;
+  transform-origin: 50% 30%;
+}
+
+.cardZone.isOpen .cardPreview{
+  animation: cardPopIn .45s cubic-bezier(.2,.9,.2,1) both;
+}
+
+@keyframes cardPopIn{
+  from{
+    opacity: 0;
+    transform: translateY(16px) scale(.985);
+    filter: blur(2px);
+  }
+  to{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* subtle shine overlay */
+.cardPreview::after{
+  content:"";
+  position:absolute;
+  inset: -20px;
+  pointer-events:none;
+  opacity: 0;
+  border-radius: 42px;
+  background: linear-gradient(
+    115deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.18) 42%,
+    rgba(255,255,255,.06) 50%,
+    rgba(255,255,255,0) 62%
+  );
+  mix-blend-mode: screen;
+  transform: translateX(-35%) translateY(-10%) rotate(-8deg);
+}
+
+.cardZone.isOpen .cardPreview::after{
+  opacity: .55;
+  animation: cardSheen 1.3s ease-out .15s both;
+}
+
+@keyframes cardSheen{
+  0%{
+    transform: translateX(-55%) translateY(-10%) rotate(-8deg);
+    opacity: 0;
+  }
+  25%{ opacity: .55; }
+  100%{
+    transform: translateX(55%) translateY(6%) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+/* button appears nicely too */
+.cardZone.isOpen .cardActions{
+  animation: actionsPop .35s ease-out .15s both;
+}
+
+@keyframes actionsPop{
+  from{ opacity:0; transform: translateY(8px); }
+  to{ opacity:1; transform: translateY(0); }
+}
