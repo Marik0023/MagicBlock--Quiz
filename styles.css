@@ -751,33 +751,98 @@ img{max-width:100%; display:block}
   100%{ transform: translateX(170%); }
 }
 
-/* ===== Shine: every 2s, slow movement (override) ===== */
+/* ============================
+   CHAMPION CARD: ANIMATED SHINE (preview only)
+   Replace ALL old shine blocks with this
+   Put at the END of styles.css
+============================ */
 
-/* залишаємо м’яке "дихання" */
+/* make sure preview clips overlays */
+.cardPreview{
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.35);
+}
+
+.cardPreview canvas{
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* soft ambient glow (subtle, always running) */
 .cardZone.isOpen .cardPreview::before{
-  animation-duration: 6s !important;
+  content:"";
+  position:absolute;
+  inset:-25%;
+  pointer-events:none;
+  border-radius: 42px;
+
+  background: radial-gradient(900px 520px at 28% 18%,
+    rgba(255,255,255,.18),
+    rgba(255,255,255,0) 60%);
+
+  mix-blend-mode: screen;
+  opacity: .18;
+  filter: blur(1px);
+
+  animation: mbGlowBreath 4s ease-in-out infinite;
 }
 
-/* блиск кожні 2 секунди */
+@keyframes mbGlowBreath{
+  0%,100%{ opacity:.12; transform: scale(1); }
+  50%{ opacity:.22; transform: scale(1.015); }
+}
+
+/* main shine sweep (every ~2 seconds) */
 .cardZone.isOpen .cardPreview::after{
-  animation-name: mbShine2s !important;
-  animation-duration: 2s !important;
-  animation-timing-function: ease-in-out !important;
-  animation-iteration-count: infinite !important;
+  content:"";
+  position:absolute;
 
-  /* щоб не було занадто "різко" */
-  opacity: .75 !important;
-  filter: blur(.6px) !important;
+  /* bigger than card so it starts OUTSIDE and ends OUTSIDE */
+  inset:-70%;
+  pointer-events:none;
+  border-radius: 42px;
 
-  /* важливо: рух короткий => виглядає повільніше */
-  transform: translateX(-18%) rotate(-8deg);
+  /* wide soft band */
+  background: linear-gradient(120deg,
+    rgba(255,255,255,0)    0%,
+    rgba(255,255,255,0)   34%,
+    rgba(255,255,255,.10) 44%,
+    rgba(255,255,255,.45) 50%,
+    rgba(255,255,255,.10) 56%,
+    rgba(255,255,255,0)   66%,
+    rgba(255,255,255,0)  100%
+  );
+
+  mix-blend-mode: screen;
+  filter: blur(.9px);
+
+  /* start fully outside left */
+  transform: translateX(-120%) rotate(-8deg);
+  opacity: 0;
+
+  animation: mbShineEvery2s 2s ease-in-out infinite;
 }
 
-@keyframes mbShine2s{
-  0%   { transform: translateX(-18%) rotate(-8deg); opacity: 0; }
-  20%  { opacity: .75; }
-  50%  { transform: translateX(18%)  rotate(-8deg); opacity: .85; }
-  80%  { opacity: .75; }
-  100% { transform: translateX(18%)  rotate(-8deg); opacity: 0; }
+@keyframes mbShineEvery2s{
+  0%{
+    transform: translateX(-120%) rotate(-8deg);
+    opacity: 0;
+  }
+  18%{ opacity: .55; }
+  50%{
+    transform: translateX(0%) rotate(-8deg);
+    opacity: .75;
+  }
+  82%{ opacity: .55; }
+  100%{
+    transform: translateX(120%) rotate(-8deg);
+    opacity: 0;
+  }
 }
- 
