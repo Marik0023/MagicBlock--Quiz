@@ -579,3 +579,4 @@ function loadImage(src) {
 
 // initial render
 computeSummary();
+ 
