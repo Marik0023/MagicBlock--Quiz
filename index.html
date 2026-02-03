@@ -49,7 +49,6 @@
         <div class="badgeDone" data-badge="song" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <!-- ВАЖЛИВО: у тебе обкладинки лежать в assets/tiles -->
             <img src="assets/tiles/song.png" alt="Song quiz cover" />
           </div>
           <div class="quizCard__meta">QUIZ 1</div>
@@ -122,9 +121,10 @@
 
       <div class="modalCard__body">
         <div class="profileForm">
-          <div class="avatarBox" id="avatarBox" role="button" tabindex="0" aria-label="Upload avatar">
+          <div class="avatarBox">
             <img id="profilePreview" alt="" />
-            <div class="avatarBox__hint">Click to upload</div>
+            <label class="avatarBox__label" for="profileFile">Upload avatar</label>
+            <input id="profileFile" type="file" accept="image/*" hidden />
           </div>
 
           <div class="field">
@@ -132,17 +132,12 @@
             <div class="help">Tip: you can click your profile later to change it.</div>
 
             <div class="btnRow">
-              <!-- тільки Upload avatar -->
-              <label class="btn btn--ghost" style="cursor:pointer;">
-                Upload avatar
-                <input id="profileFile" type="file" accept="image/*" style="display:none;">
-              </label>
-
               <button id="profileSaveBtn" class="btn">Start</button>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   </div>
 </body>
