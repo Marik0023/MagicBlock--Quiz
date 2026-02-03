@@ -715,7 +715,7 @@ img{max-width:100%; display:block}
     rgba(255,255,255,0) 60%);
   mix-blend-mode: screen;
   opacity: .22;
-  animation: mbGlowPulse 2.6s ease-in-out infinite;
+  animation: mbGlowPulse 7.6s ease-in-out infinite;
   pointer-events:none;
 }
 
@@ -736,7 +736,7 @@ img{max-width:100%; display:block}
   opacity: .95;
   filter: blur(.4px);
   transform: translateX(-160%);
-  animation: mbShineSweep 3.1s ease-in-out infinite;
+  animation: mbShineSweep 8.1s ease-in-out infinite;
   pointer-events:none;
 }
 
