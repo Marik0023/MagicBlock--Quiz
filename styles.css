@@ -686,3 +686,68 @@ img{max-width:100%; display:block}
   from{ opacity:0; transform: translateY(8px); }
   to{ opacity:1; transform: translateY(0); }
 }
+
+
+/* ===== Champion card: stronger animated shine (preview only) ===== */
+.cardPreview{
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.35);
+}
+
+.cardPreview canvas{
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* soft pulsing glow */
+.cardZone.isOpen .cardPreview::before{
+  content:"";
+  position:absolute;
+  inset:-18%;
+  background: radial-gradient(700px 420px at 30% 20%,
+    rgba(255,255,255,.22),
+    rgba(255,255,255,0) 60%);
+  mix-blend-mode: screen;
+  opacity: .22;
+  animation: mbGlowPulse 2.6s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* big shine sweep */
+.cardZone.isOpen .cardPreview::after{
+  content:"";
+  position:absolute;
+  inset:-55%;
+  background: linear-gradient(120deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0) 38%,
+    rgba(255,255,255,.16) 46%,
+    rgba(255,255,255,.55) 50%,
+    rgba(255,255,255,.16) 54%,
+    rgba(255,255,255,0) 62%,
+    rgba(255,255,255,0) 100%);
+  mix-blend-mode: screen;
+  opacity: .95;
+  filter: blur(.4px);
+  transform: translateX(-160%);
+  animation: mbShineSweep 3.1s ease-in-out infinite;
+  pointer-events:none;
+}
+
+@keyframes mbGlowPulse{
+  0%,100%{ opacity:.12; transform: scale(1); }
+  50%{ opacity:.30; transform: scale(1.02); }
+}
+
+@keyframes mbShineSweep{
+  0%{ transform: translateX(-170%); }
+  40%{ transform: translateX(-170%); } /* пауза */
+  100%{ transform: translateX(170%); }
+}
