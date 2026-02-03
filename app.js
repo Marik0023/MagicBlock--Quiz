@@ -1,9 +1,6 @@
 const $ = (id) => document.getElementById(id);
 
-const y = $("year");
-if (y) y.textContent = new Date().getFullYear();
-
-/* Autoplay helper (works after first user interaction too) */
+/* Autoplay helper */
 function forcePlayAll(selector){
   const videos = document.querySelectorAll(selector);
   if (!videos.length) return;
@@ -13,13 +10,11 @@ function forcePlayAll(selector){
   window.addEventListener("click", tryPlay, { once: true });
   window.addEventListener("touchstart", tryPlay, { once: true });
 }
-forcePlayAll(".bg__video");
-forcePlayAll(".brand__logo");
-forcePlayAll(".resultLogo");
 
 /* Profile storage */
 const PROFILE_NAME_KEY = "mb_profile_name";
 const PROFILE_AVATAR_KEY = "mb_profile_avatar"; // dataURL
+
 function getProfile(){
   return {
     name: localStorage.getItem(PROFILE_NAME_KEY) || "",
@@ -29,9 +24,6 @@ function getProfile(){
 function setProfile(name, avatar){
   localStorage.setItem(PROFILE_NAME_KEY, name.trim());
   if (avatar) localStorage.setItem(PROFILE_AVATAR_KEY, avatar);
-}
-function clearAvatar(){
-  localStorage.removeItem(PROFILE_AVATAR_KEY);
 }
 
 /* Profile UI */
@@ -97,74 +89,13 @@ function closeGate(){
   gate.setAttribute("aria-hidden", "true");
 }
 
-/* Gate wiring */
-(function initGate(){
-  const gate = $("profileGate");
-  if (!gate) return;
-
-  const require = document.body.getAttribute("data-require-profile") === "1";
-  const { name } = getProfile();
-
-  // If profile required and missing => open immediately
-  if (require && !name) openGate(false);
-
-  const closeBtn = $("gateClose");
-  if (closeBtn){
-    closeBtn.addEventListener("click", () => {
-      const { name: n } = getProfile();
-      // If required and missing => don't allow closing
-      if (require && !n) return;
-      closeGate();
-    });
-  }
-
-  const avatarInput = $("gateAvatarInput");
-  const avatarImg = $("gateAvatarImg");
-  const avatarText = $("gateAvatarText");
-  if (avatarInput){
-    avatarInput.addEventListener("change", () => {
-      const file = avatarInput.files && avatarInput.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const dataUrl = String(reader.result || "");
-        if (avatarImg && avatarText){
-          avatarImg.src = dataUrl;
-          avatarImg.style.display = "block";
-          avatarText.style.display = "none";
-        }
-        // store immediately (still can change name)
-        localStorage.setItem(PROFILE_AVATAR_KEY, dataUrl);
-        renderProfile();
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  const startBtn = $("gateStart");
-  if (startBtn){
-    startBtn.addEventListener("click", () => {
-      const nameInput = $("gateName");
-      const n = (nameInput?.value || "").trim();
-      if (!n) return;
-
-      // avatar already stored by upload; keep if exists
-      setProfile(n, "");
-      renderProfile();
-      closeGate();
-    });
-  }
-
-  const profileSlot = $("profileSlot");
-  if (profileSlot){
-    profileSlot.addEventListener("click", () => openGate(true));
-  }
-})();
-
-/* Completed badges + champion unlock */
+/* ✅ Done check (fix for Completed) */
 function isDone(key){
-  return localStorage.getItem(key) === "1";
+  const v = localStorage.getItem(key);
+  if (v === null) return false;
+  // accept multiple representations
+  if (v === "0" || v === "false") return false;
+  return true;
 }
 
 function updateBadges(){
@@ -180,16 +111,85 @@ function updateBadges(){
     const done = isDone(storageKey);
     if (!done) allDone = false;
 
-    const badge = document.querySelector(`[data-badge="${k}"]`);
-    if (badge) badge.style.display = done ? "inline-flex" : "none";
-
     const card = document.getElementById(`card-${k}`);
     if (card) card.classList.toggle("card--done", done);
+
+    const btn = document.querySelector(`[data-start="${k}"]`);
+    if (btn && done) btn.textContent = "Open";
+    if (btn && !done) btn.textContent = "Start";
   });
 
   const champ = $("championWrap");
   if (champ) champ.style.display = allDone ? "block" : "none";
 }
 
-renderProfile();
-updateBadges();
+/* init */
+document.addEventListener("DOMContentLoaded", () => {
+  const y = $("year");
+  if (y) y.textContent = new Date().getFullYear();
+
+  forcePlayAll(".bg__video");
+  forcePlayAll(".brand__logo");
+  forcePlayAll(".resultLogo");
+
+  renderProfile();
+  updateBadges();
+
+  /* Gate wiring */
+  const gate = $("profileGate");
+  if (gate){
+    const require = document.body.getAttribute("data-require-profile") === "1";
+    const { name } = getProfile();
+    if (require && !name) openGate(false);
+
+    const closeBtn = $("gateClose");
+    if (closeBtn){
+      closeBtn.addEventListener("click", () => {
+        const { name: n } = getProfile();
+        if (require && !n) return;
+        closeGate();
+      });
+    }
+
+    const avatarInput = $("gateAvatarInput");
+    const avatarImg = $("gateAvatarImg");
+    const avatarText = $("gateAvatarText");
+    if (avatarInput){
+      avatarInput.addEventListener("change", () => {
+        const file = avatarInput.files && avatarInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || "");
+          if (avatarImg && avatarText){
+            avatarImg.src = dataUrl;
+            avatarImg.style.display = "block";
+            avatarText.style.display = "none";
+          }
+          localStorage.setItem(PROFILE_AVATAR_KEY, dataUrl);
+          renderProfile();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const startBtn = $("gateStart");
+    if (startBtn){
+      startBtn.addEventListener("click", () => {
+        const nameInput = $("gateName");
+        const n = (nameInput?.value || "").trim();
+        if (!n) return;
+
+        setProfile(n, "");
+        renderProfile();
+        closeGate();
+      });
+    }
+
+    const profileSlot = $("profileSlot");
+    if (profileSlot){
+      profileSlot.addEventListener("click", () => openGate(true));
+    }
+  }
+});
