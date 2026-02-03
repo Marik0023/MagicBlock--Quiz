@@ -560,3 +560,4 @@ function renderTopProfile(){
   if (hintEl) hintEl.textContent = "Edit on Home";
   pill.addEventListener("click", () => location.href = "../index.html");
 }
+ 
