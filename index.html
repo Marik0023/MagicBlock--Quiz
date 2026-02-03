@@ -23,7 +23,6 @@
     </a>
 
     <div class="topbar__right">
-      <!-- Profile pill -->
       <button id="profileSlot" class="profile" type="button" aria-label="Profile" style="display:none">
         <div class="profile__avatar">
           <img id="profileAvatarImg" alt="Avatar" />
@@ -41,7 +40,9 @@
     <section class="grid">
 
       <!-- SONG -->
-      <article class="card" id="card-song">
+      <article class="card" id="card-song" data-quiz="song">
+        <div class="card__completed" data-badge="song">✓ Completed</div>
+
         <div class="card__media">
           <img class="card__img" src="./assets/tiles/song.png" alt="Music icon">
         </div>
@@ -50,14 +51,15 @@
         <div class="card__headline">Guess the Song by the Melody</div>
         <div class="card__text">Listen to a short melody and choose the correct song.</div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="card__footer">
           <a class="btn btn--next" data-start="song" href="./quizzes/song.html">Start</a>
-          <span class="badge" data-badge="song">✓ Completed</span>
         </div>
       </article>
 
       <!-- MOVIE -->
-      <article class="card" id="card-movie">
+      <article class="card" id="card-movie" data-quiz="movie">
+        <div class="card__completed" data-badge="movie">✓ Completed</div>
+
         <div class="card__media">
           <img class="card__img" src="./assets/tiles/cinema.png" alt="Cinema icon">
         </div>
@@ -66,14 +68,15 @@
         <div class="card__headline">Guess the Movie by the Frame</div>
         <div class="card__text">Look at a frame and pick the correct movie.</div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="card__footer">
           <a class="btn btn--next" data-start="movie" href="./quizzes/movie.html">Start</a>
-          <span class="badge" data-badge="movie">✓ Completed</span>
         </div>
       </article>
 
       <!-- MAGICBLOCK -->
-      <article class="card" id="card-magicblock">
+      <article class="card" id="card-magicblock" data-quiz="magicblock">
+        <div class="card__completed" data-badge="magicblock">✓ Completed</div>
+
         <div class="card__media">
           <img class="card__img" src="./assets/tiles/learn.png" alt="Knowledge icon">
         </div>
@@ -82,9 +85,8 @@
         <div class="card__headline">How well do you know MagicBlock?</div>
         <div class="card__text">10 questions about MagicBlock — pick A/B/C/D.</div>
 
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="card__footer">
           <a class="btn btn--next" data-start="magicblock" href="./quizzes/magicblock.html">Start</a>
-          <span class="badge" data-badge="magicblock">✓ Completed</span>
         </div>
       </article>
 
