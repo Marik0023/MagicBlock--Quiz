@@ -1,3 +1,5 @@
+// champion.js — animated metallic shimmer on canvas (Gold/Silver/Bronze)
+
 const MB_KEYS = {
   profile: "mb_profile",
   doneSong: "mb_done_song",
@@ -71,10 +73,11 @@ function getTierByCorrect(correct) {
   if (correct >= 15) return "silver";
   return "bronze";
 }
+
 const TIER_THEME = {
-  gold:   { label: "Gold",   base: "#d2a24d", dark: "#b37f2f" },
-  silver: { label: "Silver", base: "#bdbdbd", dark: "#9a9a9a" },
-  bronze: { label: "Bronze", base: "#9b561e", dark: "#7a3f13" },
+  gold:   { label: "Gold",   base: "#d2a24d", dark: "#7f5619" },
+  silver: { label: "Silver", base: "#bdbdbd", dark: "#5f5f5f" },
+  bronze: { label: "Bronze", base: "#9b561e", dark: "#4f2710" },
 };
 
 function computeSummary() {
@@ -109,16 +112,7 @@ function computeSummary() {
   return { unlocked, total, correct, acc, profile: p, tier };
 }
 
-genBtn?.addEventListener("click", async () => {
-  const s = computeSummary();
-  if (!s.unlocked) return;
-
-  await drawChampionCard(s);
-
-  cardZone?.classList.add("isOpen");
-  cardZone?.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-
+// ===== download =====
 dlBtn?.addEventListener("click", () => {
   if (!cardCanvas) return;
   const a = document.createElement("a");
@@ -127,25 +121,104 @@ dlBtn?.addEventListener("click", () => {
   a.click();
 });
 
-// ===== Canvas assets cache =====
+// ====== canvas animation state ======
 let _noisePattern = null;
-let _logoVideo = null;
+let _logoFrame = null;
 
-async function drawChampionCard(summary) {
+let _baseCanvas = null;
+let _baseCtx = null;
+
+let _raf = 0;
+let _startT = 0;
+let _lastSummaryKey = "";
+
+// ===== generate =====
+genBtn?.addEventListener("click", async () => {
+  const s = computeSummary();
+  if (!s.unlocked) return;
+
+  // restart animation every time
+  if (cardZone) {
+    cardZone.classList.remove("isOpen");
+    void cardZone.offsetWidth;
+    cardZone.classList.add("isOpen");
+  }
+
+  await drawChampionCardAnimated(s);
+
+  cardZone?.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+// ====== MAIN DRAW (animated shimmer) ======
+async function drawChampionCardAnimated(summary) {
   if (!cardCanvas) return;
 
   const W = 1400;
   const H = 800;
 
-  cardCanvas.width = W;
-  cardCanvas.height = H;
+  if (cardCanvas.width !== W) cardCanvas.width = W;
+  if (cardCanvas.height !== H) cardCanvas.height = H;
+
+  // build base once (offscreen)
+  const key = makeSummaryKey(summary);
+  if (key !== _lastSummaryKey) {
+    _lastSummaryKey = key;
+    ensureBaseCanvas(W, H);
+    await renderBaseCard(_baseCtx, W, H, summary);
+  }
+
+  // stop previous loop
+  if (_raf) cancelAnimationFrame(_raf);
+  _startT = performance.now();
 
   const ctx = cardCanvas.getContext("2d");
+
+  const loop = (t) => {
+    // stop if card is not visible/open
+    if (cardZone && !cardZone.classList.contains("isOpen")) {
+      _raf = 0;
+      return;
+    }
+
+    // draw base
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(_baseCanvas, 0, 0);
+
+    // animated sheen (subtle)
+    drawAnimatedSheen(ctx, W, H, summary, t - _startT);
+
+    _raf = requestAnimationFrame(loop);
+  };
+
+  _raf = requestAnimationFrame(loop);
+}
+
+function makeSummaryKey(s) {
+  return [
+    s.tier,
+    s.correct,
+    s.total,
+    s.acc,
+    (s.profile?.name || ""),
+    (s.profile?.avatar || "").slice(0, 32)
+  ].join("|");
+}
+
+function ensureBaseCanvas(W, H) {
+  if (_baseCanvas && _baseCanvas.width === W && _baseCanvas.height === H) return;
+  _baseCanvas = document.createElement("canvas");
+  _baseCanvas.width = W;
+  _baseCanvas.height = H;
+  _baseCtx = _baseCanvas.getContext("2d");
+}
+
+// ====== render STATIC base card into offscreen ======
+async function renderBaseCard(ctx, W, H, summary) {
   ctx.clearRect(0, 0, W, H);
 
   const theme = TIER_THEME[summary.tier] || TIER_THEME.bronze;
 
-  // --- card background ---
+  // card bg gradient
   const g = ctx.createLinearGradient(0, 0, W, H);
   g.addColorStop(0, theme.base);
   g.addColorStop(1, theme.dark);
@@ -153,53 +226,26 @@ async function drawChampionCard(summary) {
   roundRect(ctx, 0, 0, W, H, 80, true, false);
 
   // soft highlight
-  const hi = ctx.createRadialGradient(W * 0.48, H * 0.35, 120, W * 0.55, H * 0.55, H * 0.95);
-  hi.addColorStop(0, "rgba(255,255,255,0.16)");
-  hi.addColorStop(1, "rgba(0,0,0,0.12)");
+  const hi = ctx.createRadialGradient(W * 0.45, H * 0.25, 120, W * 0.55, H * 0.55, H * 0.95);
+  hi.addColorStop(0, "rgba(255,255,255,0.14)");
+  hi.addColorStop(1, "rgba(0,0,0,0.14)");
   ctx.fillStyle = hi;
   roundRect(ctx, 0, 0, W, H, 80, true, false);
 
-  // mesh + grain
+  // mesh
   ctx.save();
   roundedRectPath(ctx, 0, 0, W, H, 80);
   ctx.clip();
-  drawMesh(ctx, W, H, 0.14);
+  drawMesh(ctx, W, H, 0.12);
   ctx.restore();
 
+  // grain
   ensureNoisePattern(ctx);
   ctx.save();
   ctx.globalAlpha = 0.08;
   ctx.fillStyle = _noisePattern;
   roundRect(ctx, 0, 0, W, H, 80, true, false);
   ctx.restore();
-
-  // ----- subtle SHINE -----
-  ctx.save();
-  roundedRectPath(ctx, 0, 0, W, H, 80);
-  ctx.clip();
-
-  ctx.globalCompositeOperation = "screen";
-  ctx.globalAlpha = 0.35;
-
-  const shine = ctx.createLinearGradient(-W * 0.2, H * 0.25, W * 1.2, H * 0.75);
-  shine.addColorStop(0.00, "rgba(255,255,255,0.00)");
-  shine.addColorStop(0.45, "rgba(255,255,255,0.00)");
-  shine.addColorStop(0.52, "rgba(255,255,255,0.16)");
-  shine.addColorStop(0.60, "rgba(255,255,255,0.06)");
-  shine.addColorStop(0.72, "rgba(255,255,255,0.00)");
-  shine.addColorStop(1.00, "rgba(255,255,255,0.00)");
-  ctx.fillStyle = shine;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.globalAlpha = 0.22;
-  const bloom = ctx.createRadialGradient(W * 0.18, H * 0.18, 40, W * 0.18, H * 0.18, H * 0.55);
-  bloom.addColorStop(0, "rgba(255,255,255,0.20)");
-  bloom.addColorStop(1, "rgba(255,255,255,0.00)");
-  ctx.fillStyle = bloom;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.restore();
-  ctx.globalCompositeOperation = "source-over";
 
   // borders
   ctx.lineWidth = 3;
@@ -212,23 +258,20 @@ async function drawChampionCard(summary) {
 
   const pad = 70;
 
-  // ===== HEADER =====
-  // LEFT: icon-only (crop from logo.webm), bigger
-  await drawLogoMark(ctx, pad, pad - 40, 120, 0.95);
+  // LEFT logo (bigger)
+  await drawLogo(ctx, pad, pad - 36, 300, 118, 0.95);
 
-  // CENTER: title
+  // title
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.92)";
-  ctx.font = "800 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.font = "900 58px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textAlign = "center";
   applyTextShadow(ctx, 0.35, 10, 0, 3);
-  ctx.fillText("Champion Card", W / 2, pad + 6);
+  ctx.fillText("Champion Card", W / 2, pad + 8);
   clearTextShadow(ctx);
   ctx.restore();
 
-  // ✅ RIGHT LOGO: intentionally removed (нічого не малюємо)
-
-  // ===== AVATAR =====
+  // avatar block
   const ax = pad;
   const ay = 210;
   const as = 360;
@@ -244,11 +287,12 @@ async function drawChampionCard(summary) {
   const avatarSrc = summary.profile?.avatar || "";
   await drawAvatarRounded(ctx, avatarSrc, ax + 12, ay + 12, as - 24, as - 24, ar - 14);
 
-  // ===== TEXT =====
+  // text block
   const tx = 520;
+
   const name = (summary.profile?.name || "Player").trim();
   const scoreText = `${summary.correct} / ${summary.total}`;
-  const tierLabel = theme.label;
+  const tierLabel = (TIER_THEME[summary.tier] || TIER_THEME.bronze).label;
 
   let y = 260;
   drawLabelValue(ctx, tx, y, "Your Name", name);
@@ -262,18 +306,18 @@ async function drawChampionCard(summary) {
 
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.80)";
-  ctx.font = "650 42px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.font = "750 42px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   applyTextShadow(ctx, 0.25, 8, 0, 2);
   ctx.fillText("Card status:", tx, y);
 
   ctx.fillStyle = "rgba(255,255,255,0.96)";
-  ctx.font = "950 60px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.font = "950 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   applyTextShadow(ctx, 0.35, 10, 0, 3);
   ctx.fillText(tierLabel, tx + 300, y);
   clearTextShadow(ctx);
   ctx.restore();
 
-  // Accuracy
+  // bottom-left
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.40)";
   ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
@@ -281,8 +325,77 @@ async function drawChampionCard(summary) {
   ctx.restore();
 }
 
+// ====== animated sheen (metal shimmer) ======
+function drawAnimatedSheen(ctx, W, H, summary, dt) {
+  const theme = TIER_THEME[summary.tier] || TIER_THEME.bronze;
+
+  ctx.save();
+  roundedRectPath(ctx, 0, 0, W, H, 80);
+  ctx.clip();
+
+  // very soft pulse
+  const pulse = 0.10 + 0.05 * Math.sin(dt / 1100);
+
+  // moving diagonal band
+  const speed = 4200; // ms per sweep
+  const p = (dt % speed) / speed; // 0..1
+  const cx = -W * 0.6 + p * (W * 2.2);
+
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = 0.28 * pulse;
+
+  const band = ctx.createLinearGradient(cx - 320, H * 0.15, cx + 320, H * 0.85);
+  band.addColorStop(0.00, "rgba(255,255,255,0.00)");
+  band.addColorStop(0.40, "rgba(255,255,255,0.00)");
+  band.addColorStop(0.50, "rgba(255,255,255,0.20)");
+  band.addColorStop(0.56, "rgba(255,255,255,0.06)");
+  band.addColorStop(0.68, "rgba(255,255,255,0.00)");
+  band.addColorStop(1.00, "rgba(255,255,255,0.00)");
+
+  ctx.fillStyle = band;
+  ctx.fillRect(0, 0, W, H);
+
+  // tiny metallic sparkle (very subtle)
+  ctx.globalAlpha = 0.08 * pulse;
+  const sx = W * (0.10 + 0.80 * (0.5 + 0.5 * Math.sin(dt / 900)));
+  const sy = H * (0.18 + 0.20 * (0.5 + 0.5 * Math.cos(dt / 1200)));
+
+  const bloom = ctx.createRadialGradient(sx, sy, 10, sx, sy, H * 0.55);
+  bloom.addColorStop(0, "rgba(255,255,255,0.18)");
+  bloom.addColorStop(1, "rgba(255,255,255,0.00)");
+  ctx.fillStyle = bloom;
+  ctx.fillRect(0, 0, W, H);
+
+  // slight tint per tier (barely)
+  ctx.globalCompositeOperation = "overlay";
+  ctx.globalAlpha = 0.08;
+  const tint = ctx.createLinearGradient(0, 0, W, H);
+  tint.addColorStop(0, hexToRgba(theme.base, 0.14));
+  tint.addColorStop(1, hexToRgba(theme.dark, 0.14));
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.restore();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+}
+
+function hexToRgba(hex, a = 1) {
+  const h = hex.replace("#", "").trim();
+  const full = h.length === 3
+    ? h.split("").map(ch => ch + ch).join("")
+    : h;
+  const n = parseInt(full, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ===== UI helpers =====
 function drawLabelValue(ctx, x, y, label, value) {
   ctx.save();
+
   ctx.fillStyle = "rgba(255,255,255,0.76)";
   ctx.font = "700 38px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   applyTextShadow(ctx, 0.22, 8, 0, 2);
@@ -321,28 +434,19 @@ function clearTextShadow(ctx) {
   ctx.shadowOffsetY = 0;
 }
 
-// ===== LOGO MARK (icon-only crop from logo.webm) =====
-async function drawLogoMark(ctx, x, y, size, opacity = 0.95) {
+// ===== Logo drawing =====
+async function drawLogo(ctx, x, y, w, h, opacity = 0.95) {
   try {
-    const v = await getLogoVideo();
-    const vh = v.videoHeight || size;
-    const sw = vh;     // take left square
-    const sh = vh;
-    const sx = 0;
-    const sy = 0;
-
+    if (!_logoFrame) {
+      _logoFrame = await loadVideoFrame("assets/logo.webm", 0.0);
+    }
     ctx.save();
     ctx.globalAlpha = opacity;
-    ctx.drawImage(v, sx, sy, sw, sh, x, y, size, size);
+    ctx.drawImage(_logoFrame, x, y, w, h);
     ctx.restore();
   } catch {
     // ignore
   }
-}
-async function getLogoVideo() {
-  if (_logoVideo) return _logoVideo;
-  _logoVideo = await loadVideoFrame("assets/logo.webm", 0.0);
-  return _logoVideo;
 }
 
 function loadVideoFrame(src, time = 0) {
@@ -364,12 +468,13 @@ function loadVideoFrame(src, time = 0) {
     v.onloadeddata = () => {
       try { v.currentTime = time; } catch {}
       v.onseeked = () => { clean(); resolve(v); };
-      setTimeout(() => { clean(); resolve(v); }, 150);
+      // fallback if seek is weird
+      setTimeout(() => { clean(); resolve(v); }, 160);
     };
   });
 }
 
-// ===== geometry helpers =====
+// ===== rounded rect helpers =====
 function roundedRectPath(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -380,12 +485,14 @@ function roundedRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
 }
+
 function roundRect(ctx, x, y, w, h, r, fill, stroke) {
   roundedRectPath(ctx, x, y, w, h, r);
   if (fill) ctx.fill();
   if (stroke) ctx.stroke();
 }
 
+// ===== mesh + grain =====
 function drawMesh(ctx, W, H, alpha = 0.12) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -425,6 +532,7 @@ function drawMesh(ctx, W, H, alpha = 0.12) {
     }
     ctx.stroke();
   }
+
   ctx.restore();
 }
 
@@ -445,9 +553,11 @@ function ensureNoisePattern(ctx) {
     img.data[i + 3] = 255;
   }
   nctx.putImageData(img, 0, 0);
+
   _noisePattern = ctx.createPattern(n, "repeat");
 }
 
+// ===== avatar draw =====
 async function drawAvatarRounded(ctx, src, x, y, w, h, r) {
   ctx.save();
   roundedRectPath(ctx, x, y, w, h, r);
