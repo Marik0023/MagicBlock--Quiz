@@ -801,3 +801,103 @@ body.mbQuiz .cardZone{
 body.mbQuiz .cardActions{
   margin-top: 14px;
 }
+
+/* ============================
+   CHAMPION on HOME: preview + glow
+============================ */
+
+.champion__inner{
+  display:grid;
+  grid-template-columns: 1fr minmax(280px, 460px);
+  gap:18px;
+  align-items:center;
+}
+
+@media (max-width: 980px){
+  .champion__inner{ grid-template-columns:1fr; }
+}
+
+.champion__left{ min-width: 0; }
+
+.champion__hint{
+  margin-top: 12px;
+  color: rgba(255,255,255,.72);
+  font-weight: 800;
+}
+
+.championPreview{
+  display:block;
+}
+
+.championPreview .cardPreview{
+  width: min(460px, 100%);
+  margin: 0 auto;
+}
+
+.championPreview .cardPreview img{
+  width: 100%;
+  height: auto;
+  display:block;
+}
+
+/* glow state (set by JS) */
+.champion.champion--glow{
+  border-color: rgba(255,255,255,.18);
+}
+
+.champion.champion--glow .championPreview .cardPreview{
+  box-shadow:
+    0 18px 60px rgba(0,0,0,.55),
+    0 0 0 2px rgba(255,255,255,.08) inset,
+    0 0 60px rgba(255,255,255,.08);
+}
+
+/* reuse the same shine as cardZone but always on when ready */
+.champion.champion--glow .championPreview .cardPreview::before{
+  content:"";
+  position:absolute;
+  inset:-25%;
+  pointer-events:none;
+
+  background: radial-gradient(900px 520px at 28% 18%,
+    rgba(255,255,255,.18),
+    rgba(255,255,255,0) 60%);
+
+  mix-blend-mode: screen;
+  opacity: .16;
+  filter: blur(1px);
+  animation: mbGlowBreath 4s ease-in-out infinite;
+}
+
+.champion.champion--glow .championPreview .cardPreview::after{
+  content:"";
+  position:absolute;
+  inset:-90%;
+  pointer-events:none;
+
+  background: linear-gradient(120deg,
+    rgba(255,255,255,0)    0%,
+    rgba(255,255,255,0)   34%,
+    rgba(255,255,255,.10) 44%,
+    rgba(255,255,255,.48) 50%,
+    rgba(255,255,255,.10) 56%,
+    rgba(255,255,255,0)   66%,
+    rgba(255,255,255,0)  100%
+  );
+
+  mix-blend-mode: screen;
+  filter: blur(.9px);
+
+  transform: translateX(-110%) rotate(-8deg);
+  opacity: 0;
+
+  animation: mbShineEvery2s 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .champion.champion--glow .championPreview .cardPreview,
+  .champion.champion--glow .championPreview .cardPreview::before,
+  .champion.champion--glow .championPreview .cardPreview::after{
+    animation: none !important;
+  }
+}
