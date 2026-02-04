@@ -174,8 +174,19 @@ document.addEventListener("DOMContentLoaded", () => {
       logoSrc: "../assets/logo.webm",
     });
 
-    cardZone.classList.add("isOpen");
-    cardZone.scrollIntoView({ behavior:"smooth", block:"start" });
+      cardZone.classList.add("isOpen");
+
+      // ✅ SAVE preview PNG for Rewards modal (Home)
+      try{
+        const png = cardCanvas.toDataURL("image/png");
+        if (png && png.startsWith("data:image/")) {
+          localStorage.setItem("mb_png_magicblock", png);
+        }
+      }catch(e){}
+    
+      if (dlBtn) dlBtn.disabled = false;
+    
+      cardZone.scrollIntoView({ behavior:"smooth", block:"start" });
   });
 
   dlBtn.addEventListener("click", () => {
