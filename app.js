@@ -318,9 +318,9 @@ if (mustCreate && !getProfile()){
   if (!rewardsBtn || !modal || !closeBtn || !grid) return;
 
   const REWARD_KEYS = {
-    songPng: "mb_png_song",
-    moviePng: "mb_png_movie",
-    magicPng: "mb_png_magicblock",
+    songPng: "mb_prev_song",
+    moviePng: "mb_prev_movie",
+    magicPng: "mb_prev_magicblock",
   };
 
   const items = [
@@ -426,8 +426,8 @@ if (mustCreate && !getProfile()){
       if (hasPng){
         const dl = document.createElement("button");
         dl.className = "btn btn--ghost";
-        dl.textContent = "Download PNG";
-        dl.addEventListener("click", () => downloadDataUrl(png, filenameFor(it.key)));
+        dl.textContent = "Download";
+        dl.addEventListener("click", () => downloadDataUrl(png, filenameFor(it.key, png)));
         actions.appendChild(dl);
       }
 
@@ -442,11 +442,14 @@ if (mustCreate && !getProfile()){
     });
   }
 
-  function filenameFor(key){
-    if (key === "song") return "magicblock-song-result.png";
-    if (key === "movie") return "magicblock-movie-result.png";
-    if (key === "magicblock") return "magicblock-knowledge-result.png";
-    return "magicblock-champion-card.png";
+  function filenameFor(key, dataUrl){
+    const isJpg = (dataUrl || "").startsWith("data:image/jpeg");
+    const ext = isJpg ? "jpg" : "png";
+  
+    if (key === "song") return `magicblock-song-result.${ext}`;
+    if (key === "movie") return `magicblock-movie-result.${ext}`;
+    if (key === "magicblock") return `magicblock-knowledge-result.${ext}`;
+    return `magicblock-champion-card.${ext}`;
   }
 
   function downloadDataUrl(dataUrl, filename){
