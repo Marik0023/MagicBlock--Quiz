@@ -38,16 +38,16 @@ document.addEventListener("DOMContentLoaded", () => {
   renderTopProfile();
 
   const QUESTIONS = [
-    { audio: "../assets/songs/1.mp3", options: ["A: Mark Ronson feat. Bruno Mars — Uptown Funk", "B: Pharrell Williams — Happy", "C: Justin Timberlake — Can’t Stop the Feeling", "D: Bruno Mars — 24K Magic"], correctIndex: 0 },
-    { audio: "../assets/songs/2.mp3", options: ["A", "B", "C", "D"], correctIndex: 1 },
-    { audio: "../assets/songs/3.mp3", options: ["A", "B", "C", "D"], correctIndex: 2 },
-    { audio: "../assets/songs/4.mp3", options: ["A", "B", "C", "D"], correctIndex: 3 },
-    { audio: "../assets/songs/5.mp3", options: ["A", "B", "C", "D"], correctIndex: 0 },
-    { audio: "../assets/songs/6.mp3", options: ["A", "B", "C", "D"], correctIndex: 1 },
-    { audio: "../assets/songs/7.mp3", options: ["A", "B", "C", "D"], correctIndex: 2 },
-    { audio: "../assets/songs/8.mp3", options: ["A", "B", "C", "D"], correctIndex: 3 },
-    { audio: "../assets/songs/9.mp3", options: ["A", "B", "C", "D"], correctIndex: 0 },
-    { audio: "../assets/songs/10.mp3", options: ["A", "B", "C", "D"], correctIndex: 1 },
+    { audio: "../assets/songs/1.mp3", options: ["Mark Ronson feat. Bruno Mars — Uptown Funk", "Pharrell Williams — Happy", "Justin Timberlake — Can’t Stop the Feeling", "Bruno Mars — 24K Magic"], correctIndex: 0 },
+    { audio: "../assets/songs/2.mp3", options: ["Billie Eilish — therefore I am", "Billie Eilish — bad guy", "Lorde — Royals", "Dua Lipa — Don’t Start Now"], correctIndex: 1 },
+    { audio: "../assets/songs/3.mp3", options: ["Gorillaz — Clint Eastwood", "The Killers — Mr. Brightside", "Gorillaz — Feel Good Inc.", "Franz Ferdinand — Take Me Out"], correctIndex: 2 },
+    { audio: "../assets/songs/4.mp3", options: ["The Weeknd — Blinding Lights", "Daft Punk — Get Lucky", "Bruno Mars — That’s What I Like", "The Weeknd feat. Daft Punk — Starboy"], correctIndex: 3 },
+    { audio: "../assets/songs/5.mp3", options: ["Ed Sheeran — Shape of You", "Justin Bieber — Sorry", "Ed Sheeran — Thinking Out Loud", "Charlie Puth — Attention"], correctIndex: 0 },
+    { audio: "../assets/songs/6.mp3", options: ["Lewis Capaldi — Someone You Loved", "Tones and I — Dance Monkey", "Marshmello feat. Bastille — Happier", "Shawn Mendes & Camila Cabello — Señorita"], correctIndex: 1 },
+    { audio: "../assets/songs/7.mp3", options: ["Camila Cabello — Havana", "Enrique Iglesias — Bailando", "Luis Fonsi feat. Daddy Yankee — Despacito", "J Balvin & Willy William — Mi Gente"], correctIndex: 2 },
+    { audio: "../assets/songs/8.mp3", options: ["Lil Nas X — Panini", "Drake — God’s Plan", "Travis Scott — SICKO MODE", "Lil Nas X — Old Town Road"], correctIndex: 3 },
+    { audio: "../assets/songs/9.mp3", options: ["ROSÉ & Bruno Mars — APT.", "Justin Bieber — Believe", "Miley Cyrus — Flowers", "Bruno Mars — Locked Out of Heaven"], correctIndex: 0 },
+    { audio: "../assets/songs/10.mp3", options: ["Stromae — Papaoutai", "Stromae — Alors on danse", "Stromae — Formidable", "Stromae — Tous les mêmes"], correctIndex: 1 },
   ];
 
   const quizPanel = document.getElementById("quizPanel");
