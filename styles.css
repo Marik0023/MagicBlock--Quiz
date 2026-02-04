@@ -616,20 +616,15 @@ img{max-width:100%; display:block}
 }
 
 /* =========================================================
-   CHAMPION CARD PREVIEW: POP-IN + SHINE (clean, no duplicates)
-   - shine every 2s
-   - starts outside, ends outside
-   - smooth, reaches edges
+   CARD PREVIEW: Champion + Quiz (clean, no duplicates)
+   - Champion/home: default .cardPreview (420px)
+   - Quiz pages: body.mbQuiz #cardZone overrides (smaller + no black frame)
 ========================================================= */
 
-:root{
-  --mb-champ-preview-w: 420px;
-  --mb-quiz-preview-w: 490px; /* було 980px -> зменшили ~в 2 рази */
-}
-
+/* ===== Base preview (Champion / Home) ===== */
 .cardPreview{
   position: relative;
-  width: min(var(--mb-preview-w, var(--mb-champ-preview-w)), 100%);
+  width: min(420px, 100%);
   margin: 0 auto;
 
   border-radius: 22px;
@@ -702,12 +697,10 @@ img{max-width:100%; display:block}
   50%{ opacity:.20; transform: scale(1.015); }
 }
 
-/* MAIN shine sweep - every 2 seconds, starts outside, ends outside */
+/* MAIN shine sweep - every 2 seconds */
 .cardZone.isOpen .cardPreview::after{
   content:"";
   position:absolute;
-
-  /* bigger than card => guarantees "from outside" and "to outside" */
   inset:-90%;
   pointer-events:none;
 
@@ -731,28 +724,13 @@ img{max-width:100%; display:block}
 }
 
 @keyframes mbShineEvery2s{
-  0%{
-    transform: translateX(-110%) rotate(-8deg);
-    opacity: 0;
-  }
-  10%{
-    transform: translateX(-110%) rotate(-8deg);
-    opacity: 0;
-  }
+  0%{ transform: translateX(-110%) rotate(-8deg); opacity: 0; }
+  10%{ transform: translateX(-110%) rotate(-8deg); opacity: 0; }
   22%{ opacity: .55; }
-  50%{
-    transform: translateX(0%) rotate(-8deg);
-    opacity: .75;
-  }
+  50%{ transform: translateX(0%) rotate(-8deg); opacity: .75; }
   78%{ opacity: .55; }
-  90%{
-    transform: translateX(110%) rotate(-8deg);
-    opacity: 0;
-  }
-  100%{
-    transform: translateX(110%) rotate(-8deg);
-    opacity: 0;
-  }
+  90%{ transform: translateX(110%) rotate(-8deg); opacity: 0; }
+  100%{ transform: translateX(110%) rotate(-8deg); opacity: 0; }
 }
 
 /* reduce motion */
@@ -765,13 +743,10 @@ img{max-width:100%; display:block}
   }
 }
 
-/* =========================================================
-   QUIZ CARD PREVIEW (smaller, no black frame)
-   працює ТІЛЬКИ якщо на сторінці є <body class="mbQuiz">
-========================================================= */
-
+/* ===== Quiz result card preview (NO black frame + smaller) ===== */
 body.mbQuiz #cardZone .cardPreview{
-  --mb-preview-w: var(--mb-quiz-preview-w);
+  width: min(520px, 100%); /* було велике — тепер в ~2 рази менше */
+  margin: 0 auto;
 
   background: transparent !important;
   border: 0 !important;
@@ -784,18 +759,11 @@ body.mbQuiz #cardZone .cardPreview{
 }
 
 body.mbQuiz #cardZone .cardPreview canvas{
+  width: 100%;
+  height: auto;
+  display: block;
+
   background: transparent !important;
   border: 0 !important;
   border-radius: 28px;
-}
-
-/* ===== QUIZZES: bigger logo in topbar ===== */
-body.mbQuiz .topbar{
-  height: 70px; /* даємо місце логотипу */
-}
-
-body.mbQuiz .brand__logo{
-  height: 52px !important; /* збільшує webm */
-  width: auto !important;
-  border-radius: 12px;
 }
