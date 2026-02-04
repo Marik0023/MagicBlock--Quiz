@@ -189,134 +189,204 @@ function buildId(prefix){
 }
 
 /* =========================
-   CANVAS DRAW (Movie) — NO outer frame, NO overlaps, bigger logo+avatar
+   CANVAS DRAW (Movie) — prettier, still safe
 ========================= */
 async function drawQuizResultCard(canvas, d){
   const ctx = canvas.getContext("2d");
 
-  // розмір wide як champion
   canvas.width = 1600;
   canvas.height = 900;
 
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
 
-  // ✅ Card займає ВЕСЬ canvas (щоб не було “рамки” прозорої)
-  const card = { x: 0, y: 0, w: W, h: H, r: 96 };
+  const card = { x: 90, y: 80, w: W-180, h: H-160, r: 95 };
 
   // base
   drawRoundedRect(ctx, card.x, card.y, card.w, card.h, card.r);
   ctx.fillStyle = "#BFC0C2";
   ctx.fill();
 
-  // soft vignette
+  // inner vignette
   const vg = ctx.createRadialGradient(
-    W*0.52, H*0.38, 140,
-    W*0.52, H*0.38, W*0.95
+    card.x + card.w*0.52, card.y + card.h*0.40, 120,
+    card.x + card.w*0.52, card.y + card.h*0.40, card.w*0.95
   );
   vg.addColorStop(0, "rgba(255,255,255,.22)");
   vg.addColorStop(1, "rgba(0,0,0,.12)");
   ctx.fillStyle = vg;
-  ctx.fillRect(0,0,W,H);
+  ctx.fillRect(card.x, card.y, card.w, card.h);
 
-  // grain
-  addNoise(ctx, 0, 0, W, H, 0.055);
+  // ✅ soft top gloss
+  ctx.save();
+  drawRoundedRect(ctx, card.x, card.y, card.w, card.h, card.r);
+  ctx.clip();
+  const gloss = ctx.createLinearGradient(card.x, card.y, card.x, card.y + card.h*0.55);
+  gloss.addColorStop(0, "rgba(255,255,255,.22)");
+  gloss.addColorStop(0.35, "rgba(255,255,255,.08)");
+  gloss.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = gloss;
+  ctx.fillRect(card.x, card.y, card.w, card.h*0.6);
+  ctx.restore();
+
+  // ✅ subtle waves on right
+  drawWaves(ctx,
+    card.x + card.w*0.62,   // startX
+    card.y + card.h*0.22,   // startY
+    card.x + card.w - 130,  // endX
+    card.y + card.h*0.58,   // endY
+    11                      // lines
+  );
+
+  // grain (last so it unifies look)
+  addNoise(ctx, card.x, card.y, card.w, card.h, 0.055);
 
   const padX = 130;
-  const padTop = 120;
+  const padY = 120;
 
-  // ===== LOGO (без plate) =====
-  const logoBox = { x: padX, y: padTop - 55, w: 380, h: 120 };
+  // LOGO (no plate)
+  const logoBox = { x: card.x + padX, y: card.y + padY - 44, w: 360, h: 110 };
   const logoBitmap = await loadWebmFrameAsBitmap("../assets/logo.webm", 0.05);
-  if (logoBitmap){
-    drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
-  }
+  if (logoBitmap) drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
 
-  // ===== TITLE safe-area (не перетне лого) =====
+  // TITLE safe area
   const title = d.title || "Guess the Movie by the Frame";
   const titleLeft  = logoBox.x + logoBox.w + 70;
-  const titleRight = W - padX;
+  const titleRight = card.x + card.w - padX;
   const titleMaxW  = Math.max(260, titleRight - titleLeft);
+  const titleY = card.y + padY + 6;
 
-  const titleY = padTop + 10;
   ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = fitText(ctx, title, 76, 52, titleMaxW, "950");
+  ctx.font = fitText(ctx, title, 74, 50, titleMaxW, "950");
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(title, titleLeft, titleY);
 
-  // ===== AVATAR (більший, не плющиться) =====
-  const avatarBox = { x: padX + 10, y: 240, w: 260, h: 260, r: 80 };
+  // AVATAR (bigger + cover)
+  const avatarBox = { x: card.x + padX + 20, y: card.y + padY + 130, w: 240, h: 240, r: 70 };
   await drawAvatarRounded(ctx, d.avatar, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
 
-  // тонкий рім (гарно виглядає)
+  // subtle rim
   ctx.save();
   drawRoundedRect(ctx, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
-  ctx.strokeStyle = "rgba(255,255,255,.18)";
-  ctx.lineWidth = 5;
+  ctx.strokeStyle = "rgba(255,255,255,.20)";
+  ctx.lineWidth = 4;
   ctx.stroke();
   ctx.restore();
 
-  // ===== TEXT BLOCK (підняв, щоб НІЧОГО не накладалось) =====
-  const leftColX = avatarBox.x + avatarBox.w + 120;
-  const rightX   = W - padX;
+  const leftColX = avatarBox.x + avatarBox.w + 110;
+  const rightX   = card.x + card.w - padX;
 
-  // Your Name label
+  // Name label
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "rgba(255,255,255,.72)";
   ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("Your Name:", leftColX, avatarBox.y + 80);
+  ctx.fillText("Your Name:", leftColX, avatarBox.y + 72);
 
   // Name
   ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "950 64px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(d.name || "Player", leftColX, avatarBox.y + 150);
+  ctx.font = "950 62px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(d.name || "Player", leftColX, avatarBox.y + 140);
 
   // divider
-  ctx.strokeStyle = "rgba(255,255,255,.18)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(leftColX, avatarBox.y + 185);
-  ctx.lineTo(rightX, avatarBox.y + 185);
-  ctx.stroke();
+  softDivider(ctx, leftColX, avatarBox.y + 176, rightX);
 
   // Score label
   ctx.fillStyle = "rgba(255,255,255,.72)";
   ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("Score", leftColX, avatarBox.y + 275);
+  ctx.fillText("Score", leftColX, avatarBox.y + 260);
 
   // Score value
   ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "980 80px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`${d.correct} / ${d.total}`, leftColX, avatarBox.y + 360);
+  ctx.font = "980 78px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(`${d.correct} / ${d.total}`, leftColX, avatarBox.y + 340);
 
-  // ===== ID AREA (опустив вниз, щоб НЕ чіпало score) =====
-  const idLabelY = 665;
+  // lower divider
+  softDivider(ctx, leftColX, avatarBox.y + 390, rightX);
+
+  // ID label
   ctx.fillStyle = "rgba(255,255,255,.70)";
   ctx.font = "800 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("ID Name:", leftColX, idLabelY);
+  ctx.fillText("ID Name:", leftColX, card.y + card.h - 150);
 
+  // ID pill
   const pillX = leftColX;
-  const pillY = 685;
-  const pillW = Math.min(940, rightX - pillX);
-  const pillH = 74;
+  const pillY = card.y + card.h - 130;
+  const pillW = Math.min(900, rightX - pillX);
+  const pillH = 70;
 
-  ctx.fillStyle = "rgba(0,0,0,.28)";
-  drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 36);
+  // pill base
+  ctx.save();
+  drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 34);
+  ctx.fillStyle = "rgba(0,0,0,.26)";
   ctx.fill();
 
+  // ✅ pill gloss
+  const pg = ctx.createLinearGradient(pillX, pillY, pillX, pillY + pillH);
+  pg.addColorStop(0, "rgba(255,255,255,.14)");
+  pg.addColorStop(0.45, "rgba(255,255,255,.06)");
+  pg.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.clip();
+  ctx.fillStyle = pg;
+  ctx.fillRect(pillX, pillY, pillW, pillH);
+  ctx.restore();
+
+  // pill text
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "900 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textBaseline = "middle";
-  ctx.fillText(d.idText || "MB-MagicViewer-XXXXX", pillX + 30, pillY + pillH/2);
+  ctx.fillText(d.idText || "MB-MagicViewer-XXXXX", pillX + 28, pillY + pillH/2);
 
-  // Accuracy bottom-left
+  // Accuracy
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "rgba(0,0,0,.34)";
   ctx.font = "900 24px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`Accuracy: ${d.acc}%`, avatarBox.x, H - 56);
+  ctx.fillText(`Accuracy: ${d.acc}%`, avatarBox.x, card.y + card.h - 56);
 }
+
+/* ===== Pretty helpers (safe) ===== */
+function softDivider(ctx, x1, y, x2){
+  ctx.save();
+  ctx.lineWidth = 2;
+  const g = ctx.createLinearGradient(x1, y, x2, y);
+  g.addColorStop(0, "rgba(255,255,255,0)");
+  g.addColorStop(0.12, "rgba(255,255,255,.20)");
+  g.addColorStop(0.88, "rgba(255,255,255,.16)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.strokeStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(x1, y);
+  ctx.lineTo(x2, y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawWaves(ctx, x1, y1, x2, y2, lines=10){
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(255,255,255,.22)";
+  const w = x2 - x1;
+  const h = y2 - y1;
+
+  for (let i=0; i<lines; i++){
+    const t = i/(lines-1);
+    const y = y1 + t*h;
+
+    ctx.beginPath();
+    const amp = 10 + (i%2)*4;
+    const freq = 2.2;
+    for (let x=0; x<=w; x+=18){
+      const yy = y + Math.sin((x/w)*Math.PI*freq + t*2.3) * amp;
+      if (x===0) ctx.moveTo(x1 + x, yy);
+      else ctx.lineTo(x1 + x, yy);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /* =========================
    HELPERS
 ========================= */
