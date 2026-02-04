@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Song Quiz — MagicBlock</title>
   <link rel="stylesheet" href="../styles.css" />
+  <script src="result-card.js" defer></script>
   <script src="song.js" defer></script>
 </head>
 
@@ -41,10 +42,8 @@
       <p class="sub">10 questions • A/B/C/D • Press Next after each answer.</p>
     </section>
 
-    <!-- QUIZ -->
     <section id="quizPanel" class="panel">
       <div class="quizLayout">
-        <!-- LEFT -->
         <div>
           <div class="questionTitle" id="qTitle">Question 1 of 10</div>
 
@@ -71,10 +70,8 @@
           <audio id="audio" preload="metadata"></audio>
         </div>
 
-        <!-- RIGHT -->
         <div>
           <div class="options" id="options"></div>
-
           <div class="nextWrap">
             <button class="btn nextBtn" id="nextBtn" disabled>Next</button>
           </div>
@@ -82,7 +79,6 @@
       </div>
     </section>
 
-    <!-- RESULT -->
     <section id="resultPanel" class="panel" style="display:none; margin-top:18px;">
       <div class="resultBox">
         <h2>Result</h2>
@@ -99,8 +95,7 @@
 
         <div id="cardZone" class="cardZone">
           <div class="cardPreview">
-            <!-- ✅ wide як champion -->
-            <canvas id="cardCanvas" width="1920" height="1080"></canvas>
+            <canvas id="cardCanvas" width="1600" height="800"></canvas>
           </div>
           <div class="cardActions">
             <button id="dlBtn" class="btn btn--ghost">Download PNG</button>
