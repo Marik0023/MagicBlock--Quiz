@@ -48,17 +48,13 @@
 
           <div class="mbPlayer" style="padding:12px;">
             <video id="frameVideo"
-                   muted
-                   playsinline
-                   loop
-                   preload="metadata"
-                   style="display:none; width:100%; border-radius:16px; border:1px solid rgba(255,255,255,.12);"></video>
-
-            <img id="frameImg"
-                   src="../assets/covers/placeholder.jpg"
-                   alt="Frame"
-                   style="width:100%; border-radius:16px; border:1px solid rgba(255,255,255,.12);" />
-          </div>
+               style="width:100%; border-radius:16px; border:1px solid rgba(255,255,255,.12);"
+               muted
+               playsinline
+               preload="auto"
+               controls>
+            <source src="" type="video/mp4" />
+          </video>
 
           <div class="progressText" id="progressText">Progress: 1 / 10</div>
         </div>
