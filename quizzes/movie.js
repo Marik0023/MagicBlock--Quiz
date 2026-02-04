@@ -4,11 +4,6 @@ const MB_KEYS = {
   resMovie: "mb_result_movie",
 };
 
-const QUIZ_CARD = {
-  title: "Guess the Movie by the Frame",
-  idPrefix: "MagicViewer",
-};
-
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
 function getProfile(){ return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
 
@@ -21,15 +16,29 @@ function forcePlayAll(selector){
   window.addEventListener("touchstart", tryPlay, { once:true });
 }
 
-function makeSerial(len = 6){
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let out = "";
-  for (let i=0;i<len;i++) out += chars[Math.floor(Math.random()*chars.length)];
-  return out;
+function renderTopProfile(){
+  const pill = document.getElementById("profilePill");
+  if (!pill) return;
+  const img = pill.querySelector("img");
+  const nameEl = pill.querySelector("[data-profile-name]");
+  const hintEl = pill.querySelector("[data-profile-hint]");
+  const p = getProfile();
+  if (!p){
+    if (img) img.src = "";
+    if (nameEl) nameEl.textContent = "No profile";
+    if (hintEl) hintEl.textContent = "Go Home";
+    pill.addEventListener("click", () => location.href = "../index.html");
+    return;
+  }
+  if (img) img.src = p.avatar || "";
+  if (nameEl) nameEl.textContent = p.name || "Player";
+  if (hintEl) hintEl.textContent = "Edit on Home";
+  pill.addEventListener("click", () => location.href = "../index.html");
 }
-function ensureResultId(prefix, existing){
-  if (existing && typeof existing === "string" && existing.startsWith("MB-")) return existing;
-  return `MB-${prefix}-${makeSerial(6)}`;
+
+function makeSerial(len=5){
+  const s = Math.random().toString(36).slice(2).toUpperCase();
+  return s.slice(0, len).padEnd(len, "X");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -37,6 +46,10 @@ document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".brand__logo");
   renderTopProfile();
 
+  /**
+   * TODO: підстав свої фрейми.
+   * frame: шлях відносно quizzes/ (тобто ../assets/....)
+   */
   const QUESTIONS = [
     { frame: "../assets/movies/f1.jpg", options: ["A", "B", "C", "D"], correctIndex: 0 },
     { frame: "../assets/movies/f2.jpg", options: ["A", "B", "C", "D"], correctIndex: 1 },
@@ -75,11 +88,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
   const done = localStorage.getItem(MB_KEYS.doneMovie) === "1";
+
   if (done && saved){
-    if (!saved.id){
-      saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
-      localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(saved));
-    }
     showResult(saved);
   } else {
     renderQuestion();
@@ -97,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
     frameImg.src = q.frame || "../assets/covers/placeholder.jpg";
 
     optionsEl.innerHTML = "";
-    q.options.forEach((label, i) => {
+    (q.options || ["A","B","C","D"]).forEach((label, i) => {
       const btn = document.createElement("button");
       btn.className = "optionBtn";
       btn.type = "button";
@@ -134,7 +144,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
 
-    const result = { total, correct, acc, name: p?.name || "Player", id: ensureResultId(QUIZ_CARD.idPrefix, null), ts: Date.now() };
+    // один раз генеруємо ID і зберігаємо
+    const idName = `MB-MagicViewer-${makeSerial(5)}`;
+
+    const result = {
+      total,
+      correct,
+      acc,
+      name: p?.name || "Player",
+      idName,
+      ts: Date.now()
+    };
 
     localStorage.setItem(MB_KEYS.doneMovie, "1");
     localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(result));
@@ -158,13 +178,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!r) return;
 
     await drawQuizResultCard(cardCanvas, {
-      quizTitle: QUIZ_CARD.title,
+      quizTitle: "Guess the Movie by the Frame",
+      logoSrc: "../assets/logo.webm",
       name: p?.name || "Player",
       avatar: p?.avatar || "",
-      scoreText: `${r.correct} / ${r.total}`,
-      accuracyText: `${r.acc}%`,
-      idText: r.id || ensureResultId(QUIZ_CARD.idPrefix, null),
-      logoSrc: "../assets/logo.webm",
+      correct: r.correct,
+      total: r.total,
+      acc: r.acc,
+      idName: r.idName || `MB-MagicViewer-${makeSerial(5)}`
     });
 
     cardZone.classList.add("isOpen");
@@ -177,296 +198,307 @@ document.addEventListener("DOMContentLoaded", () => {
     a.href = cardCanvas.toDataURL("image/png");
     a.click();
   });
-
-  /* ===== SAME DRAWER as song (kept local to file for easy replace) ===== */
-
-  async function drawQuizResultCard(canvas, d){
-    canvas.width = 1600;
-    canvas.height = 900;
-
-    const ctx = canvas.getContext("2d");
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0,0,W,H);
-
-    const card = { x: 18, y: 18, w: W-36, h: H-36, r: 92 };
-
-    roundRectPath(ctx, card.x, card.y, card.w, card.h, card.r);
-    const g = ctx.createLinearGradient(card.x, card.y, card.x + card.w, card.y + card.h);
-    g.addColorStop(0, "#BFC0C3");
-    g.addColorStop(.55, "#A7A8AB");
-    g.addColorStop(1, "#8F9093");
-    ctx.fillStyle = g;
-    ctx.fill();
-
-    ctx.save();
-    ctx.clip();
-
-    const hg = ctx.createRadialGradient(card.x + card.w*0.45, card.y + card.h*0.15, 10, card.x + card.w*0.45, card.y + card.h*0.15, card.w*0.7);
-    hg.addColorStop(0, "rgba(255,255,255,.40)");
-    hg.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = hg;
-    ctx.fillRect(card.x, card.y, card.w, card.h);
-
-    const cg = ctx.createRadialGradient(card.x + card.w*0.45, card.y + card.h*0.55, 20, card.x + card.w*0.45, card.y + card.h*0.55, card.w*0.55);
-    cg.addColorStop(0, "rgba(255,255,255,.18)");
-    cg.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = cg;
-    ctx.fillRect(card.x, card.y, card.w, card.h);
-
-    drawWaves(ctx, card.x + card.w - 520, card.y + 210, 430, 250, 10, 9, 0.10);
-    drawWaves(ctx, card.x + 120, card.y + card.h - 250, 520, 170, 8, 10, 0.07);
-    drawGrain(ctx, card.x, card.y, card.w, card.h, 0.07);
-    ctx.restore();
-
-    roundRectPath(ctx, card.x, card.y, card.w, card.h, card.r);
-    ctx.strokeStyle = "rgba(255,255,255,.45)";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    roundRectPath(ctx, card.x+8, card.y+8, card.w-16, card.h-16, card.r-8);
-    ctx.strokeStyle = "rgba(0,0,0,.15)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    const pad = 92;
-    const left = card.x + pad;
-    const top = card.y + pad;
-
-    const logoW = 260;
-    const logoH = 74;
-    const logoX = left;
-    const logoY = card.y + 54;
-
-    const logoVideo = await loadVideoFrame(d.logoSrc);
-    if (logoVideo){
-      ctx.save();
-      ctx.globalAlpha = 0.92;
-      ctx.drawImage(logoVideo, logoX, logoY, logoW, logoH);
-      ctx.restore();
-    } else {
-      ctx.fillStyle = "rgba(255,255,255,.92)";
-      ctx.font = "800 34px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-      ctx.fillText("MagicBlock", logoX, logoY + 46);
-      ctx.fillStyle = "rgba(255,255,255,.78)";
-      ctx.font = "800 20px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-      ctx.fillText("Quiz", logoX + 200, logoY + 46);
-    }
-
-    const titleY = card.y + 126;
-    drawCenteredFitText(ctx, d.quizTitle, card.x + card.w/2, titleY, card.w - (pad*2), 68, 44, "800");
-
-    const avSize = 250;
-    const avX = left + 40;
-    const avY = top + 160;
-    await drawAvatarRounded(ctx, d.avatar, avX, avY, avSize, 64);
-
-    const tx = avX + avSize + 100;
-    let y = avY + 42;
-
-    ctx.fillStyle = "rgba(255,255,255,.80)";
-    ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.fillText("Your Name:", tx, y);
-
-    y += 74;
-    ctx.fillStyle = "rgba(255,255,255,.96)";
-    drawLeftFitText(ctx, d.name, tx, y, card.x + card.w - pad - tx, 72, 52, "900");
-
-    y += 34;
-    ctx.strokeStyle = "rgba(255,255,255,.18)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(tx, y);
-    ctx.lineTo(card.x + card.w - pad, y);
-    ctx.stroke();
-
-    y += 68;
-    ctx.fillStyle = "rgba(255,255,255,.78)";
-    ctx.font = "800 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.fillText("Score", tx, y);
-
-    y += 76;
-    ctx.fillStyle = "rgba(255,255,255,.96)";
-    ctx.font = "900 86px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.fillText(d.scoreText, tx, y);
-
-    const lineY = card.y + card.h - 190;
-    ctx.strokeStyle = "rgba(255,255,255,.16)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(tx, lineY);
-    ctx.lineTo(card.x + card.w - pad, lineY);
-    ctx.stroke();
-
-    ctx.fillStyle = "rgba(255,255,255,.78)";
-    ctx.font = "800 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.fillText("ID Name:", tx, lineY + 78);
-
-    const pillX = tx;
-    const pillY = lineY + 98;
-    const pillW = (card.x + card.w - pad) - tx;
-    const pillH = 72;
-
-    ctx.fillStyle = "rgba(0,0,0,.22)";
-    roundRect(ctx, pillX, pillY, pillW, pillH, 36, true, false);
-
-    ctx.strokeStyle = "rgba(255,255,255,.18)";
-    ctx.lineWidth = 2;
-    roundRect(ctx, pillX, pillY, pillW, pillH, 36, false, true);
-
-    ctx.fillStyle = "rgba(255,255,255,.92)";
-    drawLeftFitText(ctx, d.idText, pillX + 28, pillY + 50, pillW - 56, 34, 24, "900");
-
-    ctx.fillStyle = "rgba(0,0,0,.30)";
-    ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    ctx.fillText(`Accuracy: ${d.accuracyText}`, card.x + 84, card.y + card.h - 74);
-  }
-
-  function roundRectPath(ctx, x, y, w, h, r){
-    const rr = Math.min(r, w/2, h/2);
-    ctx.beginPath();
-    ctx.moveTo(x+rr, y);
-    ctx.arcTo(x+w, y, x+w, y+h, rr);
-    ctx.arcTo(x+w, y+h, x, y+h, rr);
-    ctx.arcTo(x, y+h, x, y, rr);
-    ctx.arcTo(x, y, x+w, y, rr);
-    ctx.closePath();
-  }
-  function roundRect(ctx, x, y, w, h, r, fill, stroke){
-    roundRectPath(ctx, x, y, w, h, r);
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
-  }
-  function drawCenteredFitText(ctx, text, cx, y, maxWidth, startSize, minSize, weight="800"){
-    let size = startSize;
-    while (size > minSize){
-      ctx.font = `${weight} ${size}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      if (ctx.measureText(text).width <= maxWidth) break;
-      size -= 2;
-    }
-    let out = text;
-    while (ctx.measureText(out).width > maxWidth && out.length > 4){
-      out = out.slice(0, -2) + "…";
-    }
-    ctx.fillStyle = "rgba(255,255,255,.96)";
-    ctx.textAlign = "center";
-    ctx.fillText(out, cx, y);
-    ctx.textAlign = "left";
-  }
-  function drawLeftFitText(ctx, text, x, y, maxWidth, startSize, minSize, weight="900"){
-    let size = startSize;
-    while (size > minSize){
-      ctx.font = `${weight} ${size}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-      if (ctx.measureText(text).width <= maxWidth) break;
-      size -= 2;
-    }
-    let out = text;
-    while (ctx.measureText(out).width > maxWidth && out.length > 4){
-      out = out.slice(0, -2) + "…";
-    }
-    ctx.fillText(out, x, y);
-  }
-  async function drawAvatarRounded(ctx, dataUrl, x, y, size, r){
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,.18)";
-    roundRect(ctx, x, y, size, size, r, true, false);
-
-    ctx.strokeStyle = "rgba(255,255,255,.20)";
-    ctx.lineWidth = 3;
-    roundRect(ctx, x, y, size, size, r, false, true);
-
-    roundRectPath(ctx, x+6, y+6, size-12, size-12, r-8);
-    ctx.clip();
-
-    if (dataUrl && dataUrl.startsWith("data:")){
-      try{
-        const img = await loadImage(dataUrl);
-        ctx.drawImage(img, x, y, size, size);
-      } catch {}
-    }
-    ctx.restore();
-  }
-  function loadImage(src){
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = src;
-    });
-  }
-  function loadVideoFrame(src){
-    return new Promise((resolve) => {
-      const v = document.createElement("video");
-      v.muted = true;
-      v.playsInline = true;
-      v.preload = "auto";
-      v.src = src;
-
-      const done = () => { try{ resolve(v); } catch { resolve(null); } };
-
-      v.addEventListener("loadeddata", () => done(), { once:true });
-      v.addEventListener("error", () => resolve(null), { once:true });
-
-      setTimeout(() => { if (v.readyState >= 2) done(); }, 250);
-    });
-  }
-  function drawWaves(ctx, x, y, w, h, lines=10, amp=10, alpha=0.10){
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = "rgba(255,255,255,1)";
-    ctx.lineWidth = 1.5;
-
-    for (let i=0;i<lines;i++){
-      const yy = y + (i/(lines-1))*h;
-      ctx.beginPath();
-      for (let px=0; px<=w; px+=10){
-        const t = px / w;
-        const wave = Math.sin((t* Math.PI*2) + i*0.55) * amp * (0.25 + 0.75*(1 - Math.abs(t-0.5)*2));
-        ctx.lineTo(x + px, yy + wave);
-      }
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-  function drawGrain(ctx, x, y, w, h, alpha=0.07){
-    const g = 220;
-    const off = document.createElement("canvas");
-    off.width = g; off.height = g;
-    const octx = off.getContext("2d");
-    const img = octx.createImageData(g, g);
-    for (let i=0;i<img.data.length;i+=4){
-      const v = (Math.random()*255)|0;
-      img.data[i] = v;
-      img.data[i+1] = v;
-      img.data[i+2] = v;
-      img.data[i+3] = (Math.random()*255)|0;
-    }
-    octx.putImageData(img, 0, 0);
-
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    const pat = ctx.createPattern(off, "repeat");
-    ctx.fillStyle = pat;
-    ctx.fillRect(x, y, w, h);
-    ctx.restore();
-  }
 });
 
-function renderTopProfile(){
-  const pill = document.getElementById("profilePill");
-  if (!pill) return;
-  const img = pill.querySelector("img");
-  const nameEl = pill.querySelector("[data-profile-name]");
-  const hintEl = pill.querySelector("[data-profile-hint]");
-  const p = safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
-  if (!p){
-    if (img) img.src = "";
-    if (nameEl) nameEl.textContent = "No profile";
-    if (hintEl) hintEl.textContent = "Go Home";
-    pill.addEventListener("click", () => location.href = "../index.html");
-    return;
+/* =========================
+   CARD DRAW (wide, like Song)
+========================= */
+
+async function drawQuizResultCard(canvas, d){
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0,0,W,H);
+
+  // ---- card box ----
+  const pad = Math.round(W * 0.06);         // outer padding
+  const card = {
+    x: pad,
+    y: Math.round(H * 0.12),
+    w: W - pad*2,
+    h: Math.round(H * 0.70),
+    r: Math.round(H * 0.10)
+  };
+
+  // ---- background transparent (важливо) ----
+  // нічого не малюємо як фон
+
+  // ---- card fill (silver) ----
+  const g = ctx.createLinearGradient(card.x, card.y, card.x + card.w, card.y + card.h);
+  g.addColorStop(0, "#D9D9D9");
+  g.addColorStop(0.35, "#CFCFCF");
+  g.addColorStop(1, "#C7C7C7");
+
+  roundRect(ctx, card.x, card.y, card.w, card.h, card.r, true, false, g);
+
+  // subtle inner overlay
+  ctx.save();
+  ctx.globalAlpha = 0.12;
+  const g2 = ctx.createRadialGradient(
+    card.x + card.w*0.35, card.y + card.h*0.30, 10,
+    card.x + card.w*0.55, card.y + card.h*0.50, card.w*0.75
+  );
+  g2.addColorStop(0, "#FFFFFF");
+  g2.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g2;
+  roundRect(ctx, card.x+8, card.y+8, card.w-16, card.h-16, card.r-10, true, false);
+  ctx.restore();
+
+  // border
+  ctx.save();
+  ctx.strokeStyle = "rgba(0,0,0,.20)";
+  ctx.lineWidth = 3;
+  roundRect(ctx, card.x+3, card.y+3, card.w-6, card.h-6, card.r-8, false, true);
+  ctx.restore();
+
+  // inner thin line
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.35)";
+  ctx.lineWidth = 2;
+  roundRect(ctx, card.x+10, card.y+10, card.w-20, card.h-20, card.r-14, false, true);
+  ctx.restore();
+
+  // ---- layout helpers ----
+  const left = card.x + Math.round(card.w * 0.06);
+  const top  = card.y + Math.round(card.h * 0.08);
+  const padX = Math.round(card.w * 0.05);
+
+  // ---- logo (NO squash) ----
+  const logoBox = { w: 280, h: 84 }; // трохи більше щоб було читабельніше
+  const logoX = left;
+  const logoY = top;
+
+  const logoFrame = await loadVideoFrame(d.logoSrc);
+  if (logoFrame){
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    drawContain(ctx, logoFrame, logoX, logoY, logoBox.w, logoBox.h);
+    ctx.restore();
   }
-  if (img) img.src = p.avatar || "";
-  if (nameEl) nameEl.textContent = p.name || "Player";
-  if (hintEl) hintEl.textContent = "Edit on Home";
-  pill.addEventListener("click", () => location.href = "../index.html");
+
+  // ---- title (never overlaps logo) ----
+  const titleAreaLeft  = logoX + logoBox.w + 44;
+  const titleAreaRight = card.x + card.w - padX;
+  const titleCx = (titleAreaLeft + titleAreaRight) / 2;
+  const titleMaxW = (titleAreaRight - titleAreaLeft);
+
+  const titleY = top + 58; // по центру “шапки”
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  drawCenteredFitText(ctx, d.quizTitle, titleCx, titleY, titleMaxW, 66, 42, "900");
+
+  // ---- avatar ----
+  const avSize = Math.round(card.h * 0.42);
+  const avX = left + 20;
+  const avY = card.y + Math.round(card.h * 0.26);
+
+  await drawAvatarRounded(ctx, d.avatar, avX, avY, avSize, Math.round(avSize * 0.25));
+
+  // ---- text blocks ----
+  const contentX = avX + avSize + Math.round(card.w * 0.06);
+  const contentY = card.y + Math.round(card.h * 0.30);
+
+  // labels
+  ctx.fillStyle = "rgba(255,255,255,.72)";
+  ctx.font = "800 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Your Name:", contentX, contentY);
+
+  // name
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.font = "900 54px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(String(d.name || "Player"), contentX, contentY + 64);
+
+  // divider line
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.22)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(contentX, contentY + 92);
+  ctx.lineTo(card.x + card.w - padX, contentY + 92);
+  ctx.stroke();
+  ctx.restore();
+
+  // score label
+  ctx.fillStyle = "rgba(255,255,255,.72)";
+  ctx.font = "800 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Score", contentX, contentY + 150);
+
+  // score value
+  ctx.fillStyle = "rgba(255,255,255,.95)";
+  ctx.font = "950 74px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(`${d.correct} / ${d.total}`, contentX, contentY + 232);
+
+  // bottom line
+  const bottomLineY = card.y + card.h - Math.round(card.h * 0.22);
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.18)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(contentX, bottomLineY);
+  ctx.lineTo(card.x + card.w - padX, bottomLineY);
+  ctx.stroke();
+  ctx.restore();
+
+  // Accuracy bottom-left
+  ctx.fillStyle = "rgba(0,0,0,.35)";
+  ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(`Accuracy: ${d.acc}%`, card.x + Math.round(card.w*0.06), card.y + card.h - Math.round(card.h*0.10));
+
+  // ID label + pill
+  const idLabelY = card.y + card.h - Math.round(card.h * 0.16);
+  ctx.fillStyle = "rgba(255,255,255,.72)";
+  ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("ID Name:", contentX, idLabelY);
+
+  const pillX = contentX;
+  const pillY = idLabelY + 22;
+  const pillW = Math.round(card.w * 0.52);
+  const pillH = 66;
+  const pillR = 28;
+
+  ctx.fillStyle = "rgba(0,0,0,.38)";
+  roundRect(ctx, pillX, pillY, pillW, pillH, pillR, true, false);
+
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.font = "900 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(String(d.idName || ""), pillX + 22, pillY + 44);
+
+  // ---- tiny noise (optional, makes it feel “card”) ----
+  ctx.save();
+  ctx.globalAlpha = 0.05;
+  const imgData = ctx.getImageData(card.x, card.y, card.w, card.h);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4){
+    const n = (Math.random() - 0.5) * 18;
+    data[i]     = Math.min(255, Math.max(0, data[i] + n));
+    data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + n));
+    data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + n));
+  }
+  ctx.putImageData(imgData, card.x, card.y);
+  ctx.restore();
+}
+
+/* ============ helpers ============ */
+
+function roundRect(ctx, x, y, w, h, r, fill, stroke, fillStyle){
+  const rr = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr, y);
+  ctx.arcTo(x+w, y, x+w, y+h, rr);
+  ctx.arcTo(x+w, y+h, x, y+h, rr);
+  ctx.arcTo(x, y+h, x, y, rr);
+  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.closePath();
+  if (fill){
+    if (fillStyle) ctx.fillStyle = fillStyle;
+    ctx.fill();
+  }
+  if (stroke) ctx.stroke();
+}
+
+function drawCenteredFitText(ctx, text, cx, y, maxW, maxFont, minFont, weight="900"){
+  const t = String(text || "");
+  let size = maxFont;
+  while (size >= minFont){
+    ctx.font = `${weight} ${size}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    if (ctx.measureText(t).width <= maxW) break;
+    size -= 2;
+  }
+  const w = ctx.measureText(t).width;
+  ctx.fillText(t, cx - w/2, y);
+}
+
+// object-fit: contain (для лого)
+function drawContain(ctx, media, x, y, w, h){
+  const sw = media.videoWidth || media.naturalWidth || media.width;
+  const sh = media.videoHeight || media.naturalHeight || media.height;
+  if (!sw || !sh) return;
+
+  const s = Math.min(w / sw, h / sh);
+  const dw = sw * s;
+  const dh = sh * s;
+  const dx = x + (w - dw) / 2;
+  const dy = y + (h - dh) / 2;
+  ctx.drawImage(media, dx, dy, dw, dh);
+}
+
+// object-fit: cover (для аватара)
+function drawCover(ctx, img, x, y, w, h){
+  const sw = img.naturalWidth || img.width;
+  const sh = img.naturalHeight || img.height;
+  if (!sw || !sh) return;
+
+  const s = Math.max(w / sw, h / sh);
+  const dw = sw * s;
+  const dh = sh * s;
+  const dx = x + (w - dw) / 2;
+  const dy = y + (h - dh) / 2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+async function drawAvatarRounded(ctx, dataUrl, x, y, size, radius){
+  // background + clip
+  ctx.save();
+  roundRect(ctx, x, y, size, size, radius, true, false, "rgba(0,0,0,.18)");
+  ctx.clip();
+
+  if (dataUrl && dataUrl.startsWith("data:")){
+    const img = await loadImage(dataUrl);
+    drawCover(ctx, img, x, y, size, size); // <— no squash
+  }
+
+  ctx.restore();
+
+  // border
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.28)";
+  ctx.lineWidth = 4;
+  roundRect(ctx, x+2, y+2, size-4, size-4, radius, false, true);
+  ctx.restore();
+}
+
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function loadVideoFrame(src){
+  return new Promise((resolve) => {
+    const v = document.createElement("video");
+    v.muted = true;
+    v.playsInline = true;
+    v.crossOrigin = "anonymous";
+    v.src = src;
+
+    const done = () => {
+      try{
+        // повертаємо сам video-елемент як “кадр”
+        resolve(v);
+      } catch {
+        resolve(null);
+      }
+      cleanup();
+    };
+
+    const cleanup = () => {
+      v.removeEventListener("loadeddata", onLoaded);
+      v.removeEventListener("error", onErr);
+    };
+
+    const onErr = () => { resolve(null); cleanup(); };
+
+    const onLoaded = async () => {
+      try{
+        v.currentTime = 0;
+      } catch {}
+      done();
+    };
+
+    v.addEventListener("loadeddata", onLoaded);
+    v.addEventListener("error", onErr);
+    v.load();
+  });
 }
