@@ -33,6 +33,39 @@ function ensureResultId(prefix, existing){
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
+function safeSetItem(key, value){
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    console.warn("localStorage full:", e);
+
+    // 1) чистимо найважчі штуки
+    const heavyKeys = [
+      "mb_champ_png",
+      "mb_prev_song",
+      "mb_prev_movie",
+      "mb_prev_magicblock",
+      "mb_png_song",
+      "mb_png_movie",
+      "mb_png_magicblock",
+    ];
+
+    heavyKeys.forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
+
+    // 2) пробуємо ще раз
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e2) {
+      console.warn("localStorage still full:", e2);
+      return false;
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".bg__video");
   forcePlayAll(".brand__logo");
