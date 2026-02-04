@@ -1,7 +1,8 @@
 const MB_KEYS = {
   profile: "mb_profile",
-  doneMovie: "mb_done_movie",
-  resMovie: "mb_result_movie",
+  doneMagic: "mb_done_magicblock",
+  resMagic: "mb_result_magicblock",
+  prevMagic: "mb_prev_movie", 
 };
 
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
@@ -142,36 +143,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   genBtn.addEventListener("click", async () => {
-    const p = getProfile();
-    const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
-    if (!r || !cardCanvas) return;
+  const p = getProfile();
+  const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
+  if (!r || !cardCanvas) return;
 
-    const id = buildId("MagicViewer");
-    await drawQuizResultCard(cardCanvas, {
-      title: "Guess the Movie by the Frame",
-      name: p?.name || "Player",
-      avatar: p?.avatar || "",
-      correct: r.correct,
-      total: r.total,
-      acc: r.acc,
-      idText: id
-    });
-
-      cardZone.classList.add("isOpen");
-
-      // ✅ SAVE preview PNG for Rewards modal (Home)
-      try{
-        const png = cardCanvas.toDataURL("image/png");
-        if (png && png.startsWith("data:image/")) {
-          localStorage.setItem("mb_png_movie", png);
-        }
-      }catch(e){}
-    
-      if (dlBtn) dlBtn.disabled = false;
-    
-      cardZone.scrollIntoView({ behavior:"smooth", block:"start" });
+  const id = buildId("MagicViewer");
+  await drawQuizResultCard(cardCanvas, {
+    title: "Guess the Movie by the Frame",
+    name: p?.name || "Player",
+    avatar: p?.avatar || "",
+    correct: r.correct,
+    total: r.total,
+    acc: r.acc,
+    idText: id
   });
 
+  cardZone.classList.add("isOpen");
+  if (dlBtn) dlBtn.disabled = false;
+
+  // ✅ SAVE SMALL preview (JPEG) for Rewards modal (Home)
+  try {
+    const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
+    localStorage.setItem("mb_prev_movie", prev);
+    // прибрати старий важкий PNG якщо був
+    localStorage.removeItem("mb_png_movie");
+  } catch (e) {
+    console.warn("Movie preview save failed:", e);
+    try { localStorage.removeItem("mb_prev_movie"); } catch {}
+  }
+
+  cardZone.scrollIntoView({ behavior: "smooth", block: "start" });
+});
   dlBtn.addEventListener("click", () => {
     if (!cardCanvas) return;
     const a = document.createElement("a");
@@ -403,6 +405,25 @@ function drawWaves(ctx, x1, y1, x2, y2, lines=10){
 /* =========================
    HELPERS
 ========================= */
+function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
+  const w = srcCanvas.width;
+  const h = srcCanvas.height;
+  const scale = Math.min(1, maxW / w);
+
+  const tw = Math.round(w * scale);
+  const th = Math.round(h * scale);
+
+  const t = document.createElement("canvas");
+  t.width = tw;
+  t.height = th;
+
+  const ctx = t.getContext("2d");
+  ctx.drawImage(srcCanvas, 0, 0, tw, th);
+
+  // JPEG preview (small, avoids quota)
+  return t.toDataURL("image/jpeg", quality);
+}
+
 function drawRoundedRect(ctx, x, y, w, h, r){
   const rr = Math.min(r, w/2, h/2);
   ctx.beginPath();
