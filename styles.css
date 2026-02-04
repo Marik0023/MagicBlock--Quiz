@@ -906,3 +906,8 @@ body.mbQuiz .cardActions{
 .championPreview .cardPreview{
   position: relative;
 }
+
+/* Movie quiz: align answers top with video */
+.mbQuiz .quizLayout > div:last-child{
+  padding-top: 54px; /* можеш потім підкрутити */
+}
