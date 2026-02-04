@@ -791,5 +791,5 @@ body.mbQuiz #cardZone .cardPreview canvas{
 
 /* ===== Bigger logo only on quiz pages ===== */
 body.mbQuiz .brand__logo{
-  height: 70px; /* було 52px */
+  height: 100px; /* було 52px */
 }
