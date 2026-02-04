@@ -237,11 +237,11 @@ document.addEventListener("DOMContentLoaded", () => {
     cardZone?.classList.add("isOpen");
     if (dlBtn) dlBtn.disabled = false;
 
-    // ✅ save SMALL preview (JPEG) — persists like Champion
+    // save SMALL preview (520px)
     try{
       const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
       localStorage.setItem(MB_KEYS.prevSong, prev);
-      localStorage.removeItem("mb_png_song"); // cleanup old key if existed
+      localStorage.removeItem("mb_png_song");
     }catch(e){
       console.warn("Song preview save failed:", e);
       try{ localStorage.removeItem(MB_KEYS.prevSong); }catch{}
@@ -251,15 +251,32 @@ document.addEventListener("DOMContentLoaded", () => {
     cardZone?.scrollIntoView({ behavior:"smooth", block:"start" });
   });
 
-  dlBtn?.addEventListener("click", () => {
+  dlBtn?.addEventListener("click", async () => {
     if (!cardCanvas) return;
+
+    const p = getProfile();
+    const r = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
+    if (!r) return;
+
+    // ✅ always redraw full-res before download
+    await drawQuizResultCard(cardCanvas, {
+      title: QUIZ_CARD.title,
+      name: p?.name || "Player",
+      avatar: p?.avatar || "",
+      correct: r.correct,
+      total: r.total,
+      acc: r.acc,
+      idText: r.id || ensureResultId(QUIZ_CARD.idPrefix, null),
+      logoSrc: "../assets/logo.webm",
+    });
+
     const a = document.createElement("a");
     a.download = "magicblock-song-result.png";
     a.href = cardCanvas.toDataURL("image/png");
     a.click();
   });
 
-  // ✅ auto-restore preview on load (like Champion)
+  // ✅ auto-restore preview on load (NO UPSCALE)
   restoreQuizPreview(MB_KEYS.prevSong, cardCanvas, cardZone, dlBtn, genBtn);
 });
 
@@ -373,7 +390,7 @@ async function drawQuizResultCard(canvas, d){
 }
 
 /* =========================
-   PERSIST PREVIEW (restore like Champion)
+   ✅ RESTORE PREVIEW (NO UPSCALE)
 ========================= */
 async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn){
   const prev = localStorage.getItem(previewKey);
@@ -387,12 +404,13 @@ async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBt
       img.src = prev;
     });
 
-    const ctx = cardCanvas.getContext("2d");
-    cardCanvas.width = 1600;
-    cardCanvas.height = 900;
+    // ✅ canvas = preview size
+    cardCanvas.width = img.naturalWidth || img.width;
+    cardCanvas.height = img.naturalHeight || img.height;
 
+    const ctx = cardCanvas.getContext("2d");
     ctx.clearRect(0,0,cardCanvas.width,cardCanvas.height);
-    ctx.drawImage(img, 0, 0, cardCanvas.width, cardCanvas.height);
+    ctx.drawImage(img, 0, 0);
 
     cardZone?.classList.add("isOpen");
     if (dlBtn) dlBtn.disabled = false;
