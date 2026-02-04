@@ -99,22 +99,23 @@
     <!-- Champion -->
 <section id="championWrap" class="champion" style="display:none;">
   <div class="champion__inner">
+    <!-- LEFT -->
     <div class="champion__left">
       <div class="champion__title">Champion Card</div>
       <p class="champion__desc">Complete all 3 quizzes to unlock the Champion card.</p>
 
-      <div class="btnRow">
-        <button id="openChampionBtn" class="btn">Generate Champion Card</button>
-      </div>
+      <button id="openChampionBtn" class="btn">Generate Champion Card</button>
 
+      <!-- ✅ hint (shows only after PNG exists) -->
       <div id="championHint" class="champion__hint" style="display:none;">
-        Your Champion Card is ready — it glows here ✨
+        Your Champion Card is ready — it’s glowing ✨
       </div>
     </div>
 
+    <!-- RIGHT: preview (shows only after PNG exists) -->
     <div id="championPreview" class="championPreview" style="display:none;">
       <div class="cardPreview">
-        <img id="championPreviewImg" alt="Champion card preview" />
+        <img id="championPreviewImg" alt="Champion preview" />
       </div>
     </div>
   </div>
