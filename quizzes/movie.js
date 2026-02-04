@@ -17,39 +17,6 @@ function forcePlayAll(selector){
   window.addEventListener("touchstart", tryPlay, { once:true });
 }
 
-function safeSetItem(key, value){
-  try {
-    localStorage.setItem(key, value);
-    return true;
-  } catch (e) {
-    console.warn("localStorage full:", e);
-
-    // 1) чистимо найважчі штуки
-    const heavyKeys = [
-      "mb_champ_png",
-      "mb_prev_song",
-      "mb_prev_movie",
-      "mb_prev_magicblock",
-      "mb_png_song",
-      "mb_png_movie",
-      "mb_png_magicblock",
-    ];
-
-    heavyKeys.forEach(k => {
-      try { localStorage.removeItem(k); } catch {}
-    });
-
-    // 2) пробуємо ще раз
-    try {
-      localStorage.setItem(key, value);
-      return true;
-    } catch (e2) {
-      console.warn("localStorage still full:", e2);
-      return false;
-    }
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".bg__video");
   forcePlayAll(".brand__logo");
@@ -87,12 +54,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
+  const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
+  const done = localStorage.getItem(MB_KEYS.doneMovie) === "1";
+
   let idx = 0;
   let correct = 0;
   let selectedIndex = null;
-
-  const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
-  const done = localStorage.getItem(MB_KEYS.doneMovie) === "1";
 
   if (done && saved) showResult(saved);
   else renderQuestion();
@@ -106,19 +73,15 @@ document.addEventListener("DOMContentLoaded", () => {
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
     progressText.textContent = `Progress: ${idx + 1} / ${QUESTIONS.length}`;
 
-    const src = q.frame; // тут має бути шлях на mp4
+    const src = q.frame;
 
-      if (frameVideo){
-        frameVideo.pause();
-        frameVideo.src = src;
-        frameVideo.load();
-      
-        // старт з початку, щоб “кадр” завжди був правильний
-        frameVideo.currentTime = 0;
-      
-        // автоплей може блокнутись — тому safe
-        frameVideo.play().catch(()=>{});
-      }
+    if (frameVideo){
+      frameVideo.pause();
+      frameVideo.src = src;
+      frameVideo.load();
+      frameVideo.currentTime = 0;
+      frameVideo.play().catch(()=>{});
+    }
 
     optionsEl.innerHTML = "";
     q.options.forEach((label, i) => {
@@ -157,11 +120,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const total = QUESTIONS.length;
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
-    const result = { total, correct, acc, name: p?.name || "Player", ts: Date.now() };
 
-    safeSetItem(MB_KEYS.doneMovie, "1");
-    safeSetItem(MB_KEYS.resMovie, JSON.stringify(result));
+    // stable id (keep old if exists)
+    const old = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
+    const id = old?.id || buildId("MagicViewer");
 
+    const result = { total, correct, acc, name: p?.name || "Player", id, ts: Date.now() };
+
+    localStorage.setItem(MB_KEYS.doneMovie, "1");
+    localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(result));
     showResult(result);
   });
 
@@ -175,45 +142,49 @@ document.addEventListener("DOMContentLoaded", () => {
     rAcc.textContent = `${result.acc}%`;
   }
 
-  genBtn.addEventListener("click", async () => {
-  const p = getProfile();
-  const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
-  if (!r || !cardCanvas) return;
+  genBtn?.addEventListener("click", async () => {
+    const p = getProfile();
+    const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
+    if (!r || !cardCanvas) return;
 
-  const id = buildId("MagicViewer");
-  await drawQuizResultCard(cardCanvas, {
-    title: "Guess the Movie by the Frame",
-    name: p?.name || "Player",
-    avatar: p?.avatar || "",
-    correct: r.correct,
-    total: r.total,
-    acc: r.acc,
-    idText: id
+    await drawQuizResultCard(cardCanvas, {
+      title: "Guess the Movie by the Frame",
+      name: p?.name || "Player",
+      avatar: p?.avatar || "",
+      correct: r.correct,
+      total: r.total,
+      acc: r.acc,
+      idText: r.id || buildId("MagicViewer"),
+      logoSrc: "../assets/logo.webm",
+    });
+
+    cardZone?.classList.add("isOpen");
+    if (dlBtn) dlBtn.disabled = false;
+
+    // ✅ persist small preview (JPEG)
+    try{
+      const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
+      localStorage.setItem(MB_KEYS.prevMovie, prev);
+      localStorage.removeItem("mb_png_movie");
+    }catch(e){
+      console.warn("Movie preview save failed:", e);
+      try{ localStorage.removeItem(MB_KEYS.prevMovie); }catch{}
+    }
+
+    if (genBtn) genBtn.textContent = "Regenerate Result Card";
+    cardZone?.scrollIntoView({ behavior:"smooth", block:"start" });
   });
 
-  cardZone.classList.add("isOpen");
-  if (dlBtn) dlBtn.disabled = false;
-
-  // ✅ SAVE SMALL preview (JPEG) for Rewards modal (Home)
-  try {
-    const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
-    localStorage.setItem("mb_prev_movie", prev);
-    // прибрати старий важкий PNG якщо був
-    localStorage.removeItem("mb_png_movie");
-  } catch (e) {
-    console.warn("Movie preview save failed:", e);
-    try { localStorage.removeItem("mb_prev_movie"); } catch {}
-  }
-
-  cardZone.scrollIntoView({ behavior: "smooth", block: "start" });
-});
-  dlBtn.addEventListener("click", () => {
+  dlBtn?.addEventListener("click", () => {
     if (!cardCanvas) return;
     const a = document.createElement("a");
     a.download = "magicblock-movie-result.png";
     a.href = cardCanvas.toDataURL("image/png");
     a.click();
   });
+
+  // ✅ auto-restore preview
+  restoreQuizPreview(MB_KEYS.prevMovie, cardCanvas, cardZone, dlBtn, genBtn);
 });
 
 /* ===== Top profile ===== */
@@ -247,50 +218,38 @@ function buildId(prefix){
 }
 
 /* =========================
-   CANVAS DRAW (Movie) — NO outer frame, NO overlaps, bigger logo+avatar
+   CANVAS DRAW (Movie)
 ========================= */
 async function drawQuizResultCard(canvas, d){
   const ctx = canvas.getContext("2d");
 
-  // розмір wide як champion
   canvas.width = 1600;
   canvas.height = 900;
 
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
 
-  // ✅ Card займає ВЕСЬ canvas (щоб не було “рамки” прозорої)
   const card = { x: 0, y: 0, w: W, h: H, r: 96 };
 
-  // base
   drawRoundedRect(ctx, card.x, card.y, card.w, card.h, card.r);
   ctx.fillStyle = "#BFC0C2";
   ctx.fill();
 
-  // soft vignette
-  const vg = ctx.createRadialGradient(
-    W*0.52, H*0.38, 140,
-    W*0.52, H*0.38, W*0.95
-  );
+  const vg = ctx.createRadialGradient(W*0.52, H*0.38, 140, W*0.52, H*0.38, W*0.95);
   vg.addColorStop(0, "rgba(255,255,255,.22)");
   vg.addColorStop(1, "rgba(0,0,0,.12)");
   ctx.fillStyle = vg;
   ctx.fillRect(0,0,W,H);
 
-  // grain
   addNoise(ctx, 0, 0, W, H, 0.055);
 
   const padX = 130;
   const padTop = 120;
 
-  // ===== LOGO (без plate) =====
   const logoBox = { x: padX, y: padTop - 55, w: 380, h: 120 };
-  const logoBitmap = await loadWebmFrameAsBitmap("../assets/logo.webm", 0.05);
-  if (logoBitmap){
-    drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
-  }
+  const logoBitmap = await loadWebmFrameAsBitmap(d.logoSrc || "../assets/logo.webm", 0.05);
+  if (logoBitmap) drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
 
-  // ===== TITLE safe-area (не перетне лого) =====
   const title = d.title || "Guess the Movie by the Frame";
   const titleLeft  = logoBox.x + logoBox.w + 70;
   const titleRight = W - padX;
@@ -303,11 +262,9 @@ async function drawQuizResultCard(canvas, d){
   ctx.textBaseline = "middle";
   ctx.fillText(title, titleLeft, titleY);
 
-  // ===== AVATAR (більший, не плющиться) =====
   const avatarBox = { x: padX + 10, y: 240, w: 260, h: 260, r: 80 };
   await drawAvatarRounded(ctx, d.avatar, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
 
-  // тонкий рім (гарно виглядає)
   ctx.save();
   drawRoundedRect(ctx, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
   ctx.strokeStyle = "rgba(255,255,255,.18)";
@@ -315,23 +272,20 @@ async function drawQuizResultCard(canvas, d){
   ctx.stroke();
   ctx.restore();
 
-  // ===== TEXT BLOCK (підняв, щоб НІЧОГО не накладалось) =====
   const leftColX = avatarBox.x + avatarBox.w + 120;
   const rightX   = W - padX;
 
-  // Your Name label
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
+
   ctx.fillStyle = "rgba(255,255,255,.72)";
   ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText("Your Name:", leftColX, avatarBox.y + 80);
 
-  // Name
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "950 64px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText(d.name || "Player", leftColX, avatarBox.y + 150);
 
-  // divider
   ctx.strokeStyle = "rgba(255,255,255,.18)";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -339,17 +293,14 @@ async function drawQuizResultCard(canvas, d){
   ctx.lineTo(rightX, avatarBox.y + 185);
   ctx.stroke();
 
-  // Score label
   ctx.fillStyle = "rgba(255,255,255,.72)";
   ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText("Score", leftColX, avatarBox.y + 275);
 
-  // Score value
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "980 80px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText(`${d.correct} / ${d.total}`, leftColX, avatarBox.y + 360);
 
-  // ===== ID AREA (опустив вниз, щоб НЕ чіпало score) =====
   const idLabelY = 665;
   ctx.fillStyle = "rgba(255,255,255,.70)";
   ctx.font = "800 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
@@ -369,82 +320,50 @@ async function drawQuizResultCard(canvas, d){
   ctx.textBaseline = "middle";
   ctx.fillText(d.idText || "MB-MagicViewer-XXXXX", pillX + 30, pillY + pillH/2);
 
-  // Accuracy bottom-left
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "rgba(0,0,0,.34)";
   ctx.font = "900 24px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText(`Accuracy: ${d.acc}%`, avatarBox.x, H - 56);
 }
 
-/* safe divider (nice, doesn't move layout) */
-function softDivider(ctx, x1, y, x2){
-  ctx.save();
-  ctx.lineWidth = 2;
-  const g = ctx.createLinearGradient(x1, y, x2, y);
-  g.addColorStop(0, "rgba(255,255,255,0)");
-  g.addColorStop(0.12, "rgba(255,255,255,.18)");
-  g.addColorStop(0.88, "rgba(255,255,255,.14)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.strokeStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(x1, y);
-  ctx.lineTo(x2, y);
-  ctx.stroke();
-  ctx.restore();
-}
-
-/* ===== Pretty helpers (safe) ===== */
-function softDivider(ctx, x1, y, x2){
-  ctx.save();
-  ctx.lineWidth = 2;
-  const g = ctx.createLinearGradient(x1, y, x2, y);
-  g.addColorStop(0, "rgba(255,255,255,0)");
-  g.addColorStop(0.12, "rgba(255,255,255,.20)");
-  g.addColorStop(0.88, "rgba(255,255,255,.16)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.strokeStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(x1, y);
-  ctx.lineTo(x2, y);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawWaves(ctx, x1, y1, x2, y2, lines=10){
-  ctx.save();
-  ctx.globalAlpha = 0.22;
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "rgba(255,255,255,.22)";
-  const w = x2 - x1;
-  const h = y2 - y1;
-
-  for (let i=0; i<lines; i++){
-    const t = i/(lines-1);
-    const y = y1 + t*h;
-
-    ctx.beginPath();
-    const amp = 10 + (i%2)*4;
-    const freq = 2.2;
-    for (let x=0; x<=w; x+=18){
-      const yy = y + Math.sin((x/w)*Math.PI*freq + t*2.3) * amp;
-      if (x===0) ctx.moveTo(x1 + x, yy);
-      else ctx.lineTo(x1 + x, yy);
-    }
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
 /* =========================
-   HELPERS
+   PERSIST PREVIEW
 ========================= */
+async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn){
+  const prev = localStorage.getItem(previewKey);
+  if (!prev || !prev.startsWith("data:image/") || !cardCanvas) return false;
+
+  try{
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = prev;
+    });
+
+    const ctx = cardCanvas.getContext("2d");
+    cardCanvas.width = 1600;
+    cardCanvas.height = 900;
+
+    ctx.clearRect(0,0,cardCanvas.width,cardCanvas.height);
+    ctx.drawImage(img, 0, 0, cardCanvas.width, cardCanvas.height);
+
+    cardZone?.classList.add("isOpen");
+    if (dlBtn) dlBtn.disabled = false;
+    if (genBtn) genBtn.textContent = "Regenerate Result Card";
+    return true;
+  }catch(e){
+    console.warn("restore movie preview failed:", e);
+    return false;
+  }
+}
+
 function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
   const w = srcCanvas.width;
-  const h = srcCanvas.height;
   const scale = Math.min(1, maxW / w);
 
   const tw = Math.round(w * scale);
-  const th = Math.round(h * scale);
+  const th = Math.round(srcCanvas.height * scale);
 
   const t = document.createElement("canvas");
   t.width = tw;
@@ -453,7 +372,6 @@ function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
   const ctx = t.getContext("2d");
   ctx.drawImage(srcCanvas, 0, 0, tw, th);
 
-  // JPEG preview (small, avoids quota)
   return t.toDataURL("image/jpeg", quality);
 }
 
