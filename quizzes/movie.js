@@ -16,31 +16,6 @@ function forcePlayAll(selector){
   window.addEventListener("touchstart", tryPlay, { once:true });
 }
 
-function renderTopProfile(){
-  const pill = document.getElementById("profilePill");
-  if (!pill) return;
-  const img = pill.querySelector("img");
-  const nameEl = pill.querySelector("[data-profile-name]");
-  const hintEl = pill.querySelector("[data-profile-hint]");
-  const p = getProfile();
-  if (!p){
-    if (img) img.src = "";
-    if (nameEl) nameEl.textContent = "No profile";
-    if (hintEl) hintEl.textContent = "Go Home";
-    pill.addEventListener("click", () => location.href = "../index.html");
-    return;
-  }
-  if (img) img.src = p.avatar || "";
-  if (nameEl) nameEl.textContent = p.name || "Player";
-  if (hintEl) hintEl.textContent = "Edit on Home";
-  pill.addEventListener("click", () => location.href = "../index.html");
-}
-
-function makeSerial(len=5){
-  const s = Math.random().toString(36).slice(2).toUpperCase();
-  return s.slice(0, len).padEnd(len, "X");
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".bg__video");
   forcePlayAll(".brand__logo");
@@ -89,11 +64,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
   const done = localStorage.getItem(MB_KEYS.doneMovie) === "1";
 
-  if (done && saved){
-    showResult(saved);
-  } else {
-    renderQuestion();
-  }
+  if (done && saved) showResult(saved);
+  else renderQuestion();
 
   function renderQuestion(){
     selectedIndex = null;
@@ -107,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     frameImg.src = q.frame || "../assets/covers/placeholder.jpg";
 
     optionsEl.innerHTML = "";
-    (q.options || ["A","B","C","D"]).forEach((label, i) => {
+    q.options.forEach((label, i) => {
       const btn = document.createElement("button");
       btn.className = "optionBtn";
       btn.type = "button";
@@ -143,18 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const total = QUESTIONS.length;
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
-
-    // один раз генеруємо ID і зберігаємо
-    const idName = `MB-MagicViewer-${makeSerial(5)}`;
-
-    const result = {
-      total,
-      correct,
-      acc,
-      name: p?.name || "Player",
-      idName,
-      ts: Date.now()
-    };
+    const result = { total, correct, acc, name: p?.name || "Player", ts: Date.now() };
 
     localStorage.setItem(MB_KEYS.doneMovie, "1");
     localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(result));
@@ -175,17 +136,17 @@ document.addEventListener("DOMContentLoaded", () => {
   genBtn.addEventListener("click", async () => {
     const p = getProfile();
     const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
-    if (!r) return;
+    if (!r || !cardCanvas) return;
 
+    const id = buildId("MagicViewer"); // movie -> MagicViewer
     await drawQuizResultCard(cardCanvas, {
-      quizTitle: "Guess the Movie by the Frame",
-      logoSrc: "../assets/logo.webm",
+      title: "Guess the Movie by the Frame",
       name: p?.name || "Player",
       avatar: p?.avatar || "",
       correct: r.correct,
       total: r.total,
       acc: r.acc,
-      idName: r.idName || `MB-MagicViewer-${makeSerial(5)}`
+      idText: id
     });
 
     cardZone.classList.add("isOpen");
@@ -193,6 +154,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   dlBtn.addEventListener("click", () => {
+    if (!cardCanvas) return;
     const a = document.createElement("a");
     a.download = "magicblock-movie-result.png";
     a.href = cardCanvas.toDataURL("image/png");
@@ -201,185 +163,224 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* =========================
-   CARD DRAW (wide, like Song)
+   TOP PROFILE (same as before)
 ========================= */
+function renderTopProfile(){
+  const pill = document.getElementById("profilePill");
+  if (!pill) return;
 
-async function drawQuizResultCard(canvas, d){
-  const ctx = canvas.getContext("2d");
-  const W = canvas.width, H = canvas.height;
+  const img = pill.querySelector("img");
+  const nameEl = pill.querySelector("[data-profile-name]");
+  const hintEl = pill.querySelector("[data-profile-hint]");
+  const p = getProfile();
 
-  ctx.clearRect(0,0,W,H);
-
-  // ---- card box ----
-  const pad = Math.round(W * 0.06);         // outer padding
-  const card = {
-    x: pad,
-    y: Math.round(H * 0.12),
-    w: W - pad*2,
-    h: Math.round(H * 0.70),
-    r: Math.round(H * 0.10)
-  };
-
-  // ---- background transparent (важливо) ----
-  // нічого не малюємо як фон
-
-  // ---- card fill (silver) ----
-  const g = ctx.createLinearGradient(card.x, card.y, card.x + card.w, card.y + card.h);
-  g.addColorStop(0, "#D9D9D9");
-  g.addColorStop(0.35, "#CFCFCF");
-  g.addColorStop(1, "#C7C7C7");
-
-  roundRect(ctx, card.x, card.y, card.w, card.h, card.r, true, false, g);
-
-  // subtle inner overlay
-  ctx.save();
-  ctx.globalAlpha = 0.12;
-  const g2 = ctx.createRadialGradient(
-    card.x + card.w*0.35, card.y + card.h*0.30, 10,
-    card.x + card.w*0.55, card.y + card.h*0.50, card.w*0.75
-  );
-  g2.addColorStop(0, "#FFFFFF");
-  g2.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g2;
-  roundRect(ctx, card.x+8, card.y+8, card.w-16, card.h-16, card.r-10, true, false);
-  ctx.restore();
-
-  // border
-  ctx.save();
-  ctx.strokeStyle = "rgba(0,0,0,.20)";
-  ctx.lineWidth = 3;
-  roundRect(ctx, card.x+3, card.y+3, card.w-6, card.h-6, card.r-8, false, true);
-  ctx.restore();
-
-  // inner thin line
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,.35)";
-  ctx.lineWidth = 2;
-  roundRect(ctx, card.x+10, card.y+10, card.w-20, card.h-20, card.r-14, false, true);
-  ctx.restore();
-
-  // ---- layout helpers ----
-  const left = card.x + Math.round(card.w * 0.06);
-  const top  = card.y + Math.round(card.h * 0.08);
-  const padX = Math.round(card.w * 0.05);
-
-  // ---- logo (NO squash) ----
-  const logoBox = { w: 280, h: 84 }; // трохи більше щоб було читабельніше
-  const logoX = left;
-  const logoY = top;
-
-  const logoFrame = await loadVideoFrame(d.logoSrc);
-  if (logoFrame){
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    drawContain(ctx, logoFrame, logoX, logoY, logoBox.w, logoBox.h);
-    ctx.restore();
+  if (!p){
+    if (img) img.src = "";
+    if (nameEl) nameEl.textContent = "No profile";
+    if (hintEl) hintEl.textContent = "Go Home";
+    pill.addEventListener("click", () => location.href = "../index.html");
+    return;
   }
 
-  // ---- title (never overlaps logo) ----
-  const titleAreaLeft  = logoX + logoBox.w + 44;
-  const titleAreaRight = card.x + card.w - padX;
-  const titleCx = (titleAreaLeft + titleAreaRight) / 2;
-  const titleMaxW = (titleAreaRight - titleAreaLeft);
-
-  const titleY = top + 58; // по центру “шапки”
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  drawCenteredFitText(ctx, d.quizTitle, titleCx, titleY, titleMaxW, 66, 42, "900");
-
-  // ---- avatar ----
-  const avSize = Math.round(card.h * 0.42);
-  const avX = left + 20;
-  const avY = card.y + Math.round(card.h * 0.26);
-
-  await drawAvatarRounded(ctx, d.avatar, avX, avY, avSize, Math.round(avSize * 0.25));
-
-  // ---- text blocks ----
-  const contentX = avX + avSize + Math.round(card.w * 0.06);
-  const contentY = card.y + Math.round(card.h * 0.30);
-
-  // labels
-  ctx.fillStyle = "rgba(255,255,255,.72)";
-  ctx.font = "800 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("Your Name:", contentX, contentY);
-
-  // name
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "900 54px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(String(d.name || "Player"), contentX, contentY + 64);
-
-  // divider line
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,.22)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(contentX, contentY + 92);
-  ctx.lineTo(card.x + card.w - padX, contentY + 92);
-  ctx.stroke();
-  ctx.restore();
-
-  // score label
-  ctx.fillStyle = "rgba(255,255,255,.72)";
-  ctx.font = "800 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("Score", contentX, contentY + 150);
-
-  // score value
-  ctx.fillStyle = "rgba(255,255,255,.95)";
-  ctx.font = "950 74px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`${d.correct} / ${d.total}`, contentX, contentY + 232);
-
-  // bottom line
-  const bottomLineY = card.y + card.h - Math.round(card.h * 0.22);
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,.18)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(contentX, bottomLineY);
-  ctx.lineTo(card.x + card.w - padX, bottomLineY);
-  ctx.stroke();
-  ctx.restore();
-
-  // Accuracy bottom-left
-  ctx.fillStyle = "rgba(0,0,0,.35)";
-  ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`Accuracy: ${d.acc}%`, card.x + Math.round(card.w*0.06), card.y + card.h - Math.round(card.h*0.10));
-
-  // ID label + pill
-  const idLabelY = card.y + card.h - Math.round(card.h * 0.16);
-  ctx.fillStyle = "rgba(255,255,255,.72)";
-  ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("ID Name:", contentX, idLabelY);
-
-  const pillX = contentX;
-  const pillY = idLabelY + 22;
-  const pillW = Math.round(card.w * 0.52);
-  const pillH = 66;
-  const pillR = 28;
-
-  ctx.fillStyle = "rgba(0,0,0,.38)";
-  roundRect(ctx, pillX, pillY, pillW, pillH, pillR, true, false);
-
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "900 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(String(d.idName || ""), pillX + 22, pillY + 44);
-
-  // ---- tiny noise (optional, makes it feel “card”) ----
-  ctx.save();
-  ctx.globalAlpha = 0.05;
-  const imgData = ctx.getImageData(card.x, card.y, card.w, card.h);
-  const data = imgData.data;
-  for (let i = 0; i < data.length; i += 4){
-    const n = (Math.random() - 0.5) * 18;
-    data[i]     = Math.min(255, Math.max(0, data[i] + n));
-    data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + n));
-    data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + n));
-  }
-  ctx.putImageData(imgData, card.x, card.y);
-  ctx.restore();
+  if (img) img.src = p.avatar || "";
+  if (nameEl) nameEl.textContent = p.name || "Player";
+  if (hintEl) hintEl.textContent = "Edit on Home";
+  pill.addEventListener("click", () => location.href = "../index.html");
 }
 
-/* ============ helpers ============ */
+function getProfile(){ try{ return JSON.parse(localStorage.getItem(MB_KEYS.profile)) }catch{ return null } }
 
-function roundRect(ctx, x, y, w, h, r, fill, stroke, fillStyle){
+/* =========================
+   ID builder
+========================= */
+function buildId(prefix){
+  const serial = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `MB-${prefix}-${serial}`;
+}
+
+/* =========================
+   CANVAS DRAW (FIXED LOGO + NO OVERLAP)
+========================= */
+async function drawQuizResultCard(canvas, d){
+  const ctx = canvas.getContext("2d");
+
+  // Wide card like champion (no background outside the card)
+  canvas.width = 1600;
+  canvas.height = 900;
+
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Card box
+  const card = {
+    x: 80,
+    y: 70,
+    w: W - 160,
+    h: H - 140,
+    r: 90
+  };
+
+  // Background card fill (silver)
+  // subtle grain look
+  drawRoundedRect(ctx, card.x, card.y, card.w, card.h, card.r);
+  ctx.fillStyle = "#BFC0C2";
+  ctx.fill();
+
+  // inner soft vignette
+  const vg = ctx.createRadialGradient(
+    card.x + card.w*0.45, card.y + card.h*0.45, 80,
+    card.x + card.w*0.45, card.y + card.h*0.45, card.w*0.8
+  );
+  vg.addColorStop(0, "rgba(255,255,255,.25)");
+  vg.addColorStop(1, "rgba(0,0,0,.12)");
+  ctx.fillStyle = vg;
+  ctx.fillRect(card.x, card.y, card.w, card.h);
+
+  // border
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = "rgba(255,255,255,.35)";
+  drawRoundedRect(ctx, card.x+10, card.y+10, card.w-20, card.h-20, card.r-18);
+  ctx.stroke();
+
+  // safe padding
+  const padX = 110;
+  const padY = 95;
+
+  // ===== LOGO (WEBM) - fixed (no squish) =====
+  // draw it inside a pill area
+  const logoBox = {
+    x: card.x + padX,
+    y: card.y + padY - 18,
+    w: 240,
+    h: 70,
+    r: 20
+  };
+
+  // light plate under logo (like in your mock)
+  ctx.fillStyle = "rgba(255,255,255,.35)";
+  drawRoundedRect(ctx, logoBox.x - 10, logoBox.y - 10, logoBox.w + 20, logoBox.h + 20, 18);
+  ctx.fill();
+
+  // load webm frame reliably
+  const logoBitmap = await loadWebmFrameAsBitmap("../assets/logo.webm", 0.05);
+  if (logoBitmap){
+    drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
+  }
+
+  // ===== TITLE (NO OVERLAP) =====
+  // Reserve left area for logo + spacing
+  const titleAreaLeft = logoBox.x + logoBox.w + 70;
+  const titleAreaRight = card.x + card.w - padX;
+  const titleMaxW = Math.max(200, titleAreaRight - titleAreaLeft);
+
+  const titleY = card.y + padY + 40;
+
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  // fit title size to available width
+  const titleFont = fitText(ctx, d.title, 64, 44, titleMaxW, "900");
+  ctx.font = titleFont;
+  // left-align to avoid crossing into logo
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(d.title, titleAreaLeft, titleY);
+
+  // ===== AVATAR (NO SQUISH) =====
+  const avatarBox = {
+    x: card.x + padX + 25,
+    y: card.y + padY + 140,
+    w: 190,
+    h: 190,
+    r: 55
+  };
+
+  // frame
+  ctx.fillStyle = "rgba(0,0,0,.18)";
+  drawRoundedRect(ctx, avatarBox.x - 10, avatarBox.y - 10, avatarBox.w + 20, avatarBox.h + 20, avatarBox.r + 18);
+  ctx.fill();
+
+  await drawAvatarRounded(ctx, d.avatar, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
+
+  // ===== TEXT BLOCK =====
+  const leftColX = avatarBox.x + avatarBox.w + 90;
+  let y = avatarBox.y + 38;
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+
+  // Name label
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.font = "700 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Your Name:", leftColX, y);
+  y += 52;
+
+  // Name
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.font = "900 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(d.name, leftColX, y);
+  y += 70;
+
+  // Divider line
+  ctx.strokeStyle = "rgba(255,255,255,.25)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(leftColX, y);
+  ctx.lineTo(card.x + card.w - padX, y);
+  ctx.stroke();
+  y += 58;
+
+  // Score label
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.font = "700 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("Score", leftColX, y);
+  y += 60;
+
+  // Score big
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.font = "950 72px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(`${d.correct} / ${d.total}`, leftColX, y);
+  y += 80;
+
+  // bottom line
+  ctx.strokeStyle = "rgba(255,255,255,.18)";
+  ctx.beginPath();
+  ctx.moveTo(leftColX, card.y + card.h - padY - 120);
+  ctx.lineTo(card.x + card.w - padX, card.y + card.h - padY - 120);
+  ctx.stroke();
+
+  // ID label
+  ctx.fillStyle = "rgba(255,255,255,.75)";
+  ctx.font = "700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText("ID Name:", leftColX, card.y + card.h - padY - 70);
+
+  // ID pill
+  const pillX = leftColX;
+  const pillY = card.y + card.h - padY - 55;
+  const pillW = Math.min(760, card.x + card.w - padX - pillX);
+  const pillH = 62;
+
+  ctx.fillStyle = "rgba(0,0,0,.32)";
+  drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 28);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,.92)";
+  ctx.font = "800 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.textBaseline = "middle";
+  ctx.fillText(d.idText, pillX + 26, pillY + pillH/2);
+
+  // Accuracy bottom-left
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "rgba(0,0,0,.35)";
+  ctx.font = "800 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  ctx.fillText(`Accuracy: ${d.acc}%`, avatarBox.x - 5, card.y + card.h - padY + 12);
+
+  // Grain
+  addNoise(ctx, card.x, card.y, card.w, card.h, 0.06);
+}
+
+/* =========================
+   HELPERS
+========================= */
+function drawRoundedRect(ctx, x, y, w, h, r){
   const rr = Math.min(r, w/2, h/2);
   ctx.beginPath();
   ctx.moveTo(x+rr, y);
@@ -388,72 +389,64 @@ function roundRect(ctx, x, y, w, h, r, fill, stroke, fillStyle){
   ctx.arcTo(x, y+h, x, y, rr);
   ctx.arcTo(x, y, x+w, y, rr);
   ctx.closePath();
-  if (fill){
-    if (fillStyle) ctx.fillStyle = fillStyle;
-    ctx.fill();
+}
+
+function fitText(ctx, text, maxPx, minPx, maxW, weight="900"){
+  for (let px=maxPx; px>=minPx; px--){
+    const f = `${weight} ${px}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+    ctx.font = f;
+    if (ctx.measureText(text).width <= maxW) return f;
   }
-  if (stroke) ctx.stroke();
+  return `${weight} ${minPx}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
 }
 
-function drawCenteredFitText(ctx, text, cx, y, maxW, maxFont, minFont, weight="900"){
-  const t = String(text || "");
-  let size = maxFont;
-  while (size >= minFont){
-    ctx.font = `${weight} ${size}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-    if (ctx.measureText(t).width <= maxW) break;
-    size -= 2;
-  }
-  const w = ctx.measureText(t).width;
-  ctx.fillText(t, cx - w/2, y);
-}
-
-// object-fit: contain (для лого)
-function drawContain(ctx, media, x, y, w, h){
-  const sw = media.videoWidth || media.naturalWidth || media.width;
-  const sh = media.videoHeight || media.naturalHeight || media.height;
-  if (!sw || !sh) return;
-
-  const s = Math.min(w / sw, h / sh);
-  const dw = sw * s;
-  const dh = sh * s;
-  const dx = x + (w - dw) / 2;
-  const dy = y + (h - dh) / 2;
-  ctx.drawImage(media, dx, dy, dw, dh);
-}
-
-// object-fit: cover (для аватара)
-function drawCover(ctx, img, x, y, w, h){
-  const sw = img.naturalWidth || img.width;
-  const sh = img.naturalHeight || img.height;
-  if (!sw || !sh) return;
-
-  const s = Math.max(w / sw, h / sh);
-  const dw = sw * s;
-  const dh = sh * s;
-  const dx = x + (w - dw) / 2;
-  const dy = y + (h - dh) / 2;
-  ctx.drawImage(img, dx, dy, dw, dh);
-}
-
-async function drawAvatarRounded(ctx, dataUrl, x, y, size, radius){
-  // background + clip
+async function drawAvatarRounded(ctx, dataUrl, x, y, w, h, r){
+  // placeholder
   ctx.save();
-  roundRect(ctx, x, y, size, size, radius, true, false, "rgba(0,0,0,.18)");
+  drawRoundedRect(ctx, x, y, w, h, r);
   ctx.clip();
+  ctx.fillStyle = "rgba(255,255,255,.20)";
+  ctx.fillRect(x,y,w,h);
 
   if (dataUrl && dataUrl.startsWith("data:")){
     const img = await loadImage(dataUrl);
-    drawCover(ctx, img, x, y, size, size); // <— no squash
+    drawCoverImage(ctx, img, x, y, w, h);
   }
 
   ctx.restore();
 
   // border
-  ctx.save();
   ctx.strokeStyle = "rgba(255,255,255,.28)";
-  ctx.lineWidth = 4;
-  roundRect(ctx, x+2, y+2, size-4, size-4, radius, false, true);
-  ctx.restore();
+  ctx.lineWidth = 6;
+  drawRoundedRect(ctx, x, y, w, h, r);
+  ctx.stroke();
+}
+
+function drawCoverImage(ctx, img, x, y, w, h){
+  const sw = img.naturalWidth || img.width;
+  const sh = img.naturalHeight || img.height;
+  if (!sw || !sh) return;
+
+  const s = Math.max(w/sw, h/sh);
+  const dw = sw*s;
+  const dh = sh*s;
+  const dx = x + (w - dw)/2;
+  const dy = y + (h - dh)/2;
+
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+function drawContainBitmap(ctx, bmp, x, y, w, h){
+  const sw = bmp.width, sh = bmp.height;
+  if (!sw || !sh) return;
+
+  const s = Math.min(w/sw, h/sh);
+  const dw = sw*s;
+  const dh = sh*s;
+  const dx = x + (w - dw)/2;
+  const dy = y + (h - dh)/2;
+
+  ctx.drawImage(bmp, dx, dy, dw, dh);
 }
 
 function loadImage(src){
@@ -465,40 +458,69 @@ function loadImage(src){
   });
 }
 
-function loadVideoFrame(src){
+/**
+ * ✅ WEBM -> ImageBitmap (reliable sizes)
+ * waits metadata + seeks safely
+ */
+async function loadWebmFrameAsBitmap(src, t=0.05){
   return new Promise((resolve) => {
     const v = document.createElement("video");
     v.muted = true;
     v.playsInline = true;
     v.crossOrigin = "anonymous";
+    v.preload = "auto";
     v.src = src;
 
-    const done = () => {
+    const cleanup = () => {
+      try{ v.pause(); }catch{}
+      v.src = "";
+    };
+
+    v.addEventListener("error", () => { cleanup(); resolve(null); }, { once:true });
+
+    v.addEventListener("loadedmetadata", async () => {
       try{
-        // повертаємо сам video-елемент як “кадр”
-        resolve(v);
+        // ensure valid time
+        const tt = Math.min(Math.max(t, 0), Math.max(0.01, (v.duration || 1) - 0.01));
+        v.currentTime = tt;
+
+        v.addEventListener("seeked", async () => {
+          try{
+            const vw = v.videoWidth, vh = v.videoHeight;
+            if (!vw || !vh){ cleanup(); resolve(null); return; }
+
+            const c = document.createElement("canvas");
+            c.width = vw;
+            c.height = vh;
+            const cctx = c.getContext("2d");
+            cctx.drawImage(v, 0, 0, vw, vh);
+
+            // ImageBitmap keeps correct aspect (no squish)
+            const bmp = await createImageBitmap(c);
+            cleanup();
+            resolve(bmp);
+          } catch {
+            cleanup();
+            resolve(null);
+          }
+        }, { once:true });
+
       } catch {
+        cleanup();
         resolve(null);
       }
-      cleanup();
-    };
-
-    const cleanup = () => {
-      v.removeEventListener("loadeddata", onLoaded);
-      v.removeEventListener("error", onErr);
-    };
-
-    const onErr = () => { resolve(null); cleanup(); };
-
-    const onLoaded = async () => {
-      try{
-        v.currentTime = 0;
-      } catch {}
-      done();
-    };
-
-    v.addEventListener("loadeddata", onLoaded);
-    v.addEventListener("error", onErr);
-    v.load();
+    }, { once:true });
   });
+}
+
+function addNoise(ctx, x, y, w, h, alpha=0.06){
+  const img = ctx.getImageData(x,y,w,h);
+  const d = img.data;
+  for (let i=0; i<d.length; i+=4){
+    const n = (Math.random()*255)|0;
+    d[i]   = d[i]   + (n - 128)*alpha;
+    d[i+1] = d[i+1] + (n - 128)*alpha;
+    d[i+2] = d[i+2] + (n - 128)*alpha;
+  }
+  ctx.putImageData(img, x, y);
 }
