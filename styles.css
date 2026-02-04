@@ -181,7 +181,7 @@ img{max-width:100%; display:block}
 .quizCard::before{
   content:"";
   position:absolute; inset:-2px;
-  background:pk
+  background:
     radial-gradient(700px 280px at 25% 10%, rgba(120,140,255,.16), transparent 60%),
     radial-gradient(600px 260px at 85% 5%, rgba(255,120,200,.12), transparent 58%),
     radial-gradient(700px 300px at 50% 115%, rgba(255,180,80,.10), transparent 60%);
