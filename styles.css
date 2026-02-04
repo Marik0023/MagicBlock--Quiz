@@ -785,3 +785,19 @@ body.mbQuiz #cardZone.isOpen .cardPreview::after{
   display: none !important;
   content: none !important;
 }
+
+/* ================================
+   QUIZ: remove big preview panel/frame behind result card
+   (only on quiz pages)
+================================ */
+body.mbQuiz .cardZone{
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* optional: keep spacing nice */
+body.mbQuiz .cardActions{
+  margin-top: 14px;
+}
