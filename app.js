@@ -36,7 +36,14 @@ function getProfile(){
   return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
 }
 function setProfile(profile){
-  localStorage.setItem(MB_KEYS.profile, JSON.stringify(profile));
+  try{
+    localStorage.setItem(MB_KEYS.profile, JSON.stringify(profile));
+    return true;
+  } catch (e){
+    console.error("setProfile failed:", e);
+    alert("Storage is full. Need to reduce avatar size or clear saved cards.");
+    return false;
+  }
 }
 
 function forcePlayAll(selector){
