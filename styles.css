@@ -901,3 +901,8 @@ body.mbQuiz .cardActions{
     animation: none !important;
   }
 }
+
+/* CHAMPION preview: make pseudo-elements work correctly */
+.championPreview .cardPreview{
+  position: relative;
+}
