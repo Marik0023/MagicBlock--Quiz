@@ -1,8 +1,8 @@
 const MB_KEYS = {
   profile: "mb_profile",
-  doneMagic: "mb_done_magicblock",
-  resMagic: "mb_result_magicblock",
-  prevMagic: "mb_prev_movie", 
+  doneMovie: "mb_done_movie",
+  resMovie: "mb_result_movie",
+  prevMovie: "mb_prev_movie",
 };
 
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
