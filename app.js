@@ -256,16 +256,6 @@ initProfileModal();
 updateBadges();
 initHomeButtons();
 
-/* ===== Champion glow on Home (after generate) ===== */
-function updateChampionGlow(){
-  const wrap = document.getElementById("championWrap");
-  if (!wrap) return;
-
-  const ready = localStorage.getItem("mb_champ_ready") === "1";
-  wrap.classList.toggle("glow", ready);
-}
-updateChampionGlow();
-
 const mustCreate = document.body.getAttribute("data-require-profile") === "1";
 if (mustCreate && !getProfile()){
   openProfileModal(true);
