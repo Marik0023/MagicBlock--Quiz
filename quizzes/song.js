@@ -5,8 +5,9 @@ const MB_KEYS = {
   prevSong: "mb_prev_song",
 
   // progress (resume)
-  progSong: "mb_prog_song",                 // number of answered (0..9) but store only when >0
-  progSongState: "mb_prog_song_state",      // JSON
+  // IMPORTANT: now stores ANSWERED COUNT (0..10), not question number
+  progSong: "mb_prog_song",
+  progSongState: "mb_prog_song_state",
 };
 
 const QUIZ_CARD = {
@@ -37,44 +38,35 @@ function ensureResultId(prefix, existing){
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
-/* ===== Progress helpers (Song) ===== */
-function hasAnyAnswer(answers){
-  return Array.isArray(answers) && answers.some(v => Number.isFinite(v));
-}
-
+/* ===== Progress helpers (Song) =====
+   We store:
+   - progSong: answeredCount (0..10)
+   - progSongState: { idx, correct, answers } where idx = next question index (0..9)
+*/
 function saveProgressSong(idx0, correct, answers){
-  // idx0 = current question index (0..9)
-  // answered count = idx0 (бо якщо idx0=1 => уже відповів 1 питання)
-  const answered = Math.max(0, Math.min(9, Number(idx0) || 0));
-
-  // ❗️До 1-ї відповіді нічого не зберігаємо -> на Home не буде 10%/Continue
-  if (answered <= 0 && !hasAnyAnswer(answers)){
-    clearProgressSong();
-    return;
-  }
-
+  const answered = Math.max(0, Math.min(10, idx0)); // idx0 == next question index
   localStorage.setItem(MB_KEYS.progSong, String(answered));
   localStorage.setItem(MB_KEYS.progSongState, JSON.stringify({
-    idx: Math.max(0, Math.min(9, Number(idx0) || 0)),
+    idx: Math.max(0, Math.min(9, idx0)),
     correct: Number.isFinite(correct) ? correct : 0,
     answers: Array.isArray(answers) ? answers : []
   }));
 }
 
 function loadProgressSong(){
-  const n = Number(localStorage.getItem(MB_KEYS.progSong) || "0");
+  const answered = Number(localStorage.getItem(MB_KEYS.progSong) || "0");
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progSongState), null);
 
-  if (!Number.isFinite(n) || n <= 0) return null;
+  if (!Number.isFinite(answered) || answered <= 0) return null;
 
-  const idx = Number.isFinite(state?.idx) ? state.idx : n; // idx = current question index
-  const correct = state?.correct;
-  const answers = state?.answers;
+  const idx = Number.isFinite(state?.idx) ? state.idx : answered; // fallback: idx == answered
+  const correct = Number.isFinite(state?.correct) ? state.correct : 0;
+  const answers = Array.isArray(state?.answers) ? state.answers : [];
 
   return {
     idx: Math.max(0, Math.min(9, idx)),
-    correct: Number.isFinite(correct) ? correct : 0,
-    answers: Array.isArray(answers) ? answers : []
+    correct,
+    answers
   };
 }
 
@@ -107,10 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const qTitle = document.getElementById("qTitle");
   const progressText = document.getElementById("progressText");
 
-  // ✅ правильні id
-  const quizProg = document.getElementById("quizProg");
-  const progFill = document.getElementById("quizProgFill");
-  const progPct  = document.getElementById("quizProgPct");
+  // ✅ FIXED IDs (match song.html)
+  const quizProgFill = document.getElementById("quizProgFill");
+  const quizProgPct  = document.getElementById("quizProgPct");
 
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
@@ -130,13 +121,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
-  const criticalOk = !!(quizPanel && qTitle && progressText && optionsEl && nextBtn && audio);
+  const criticalOk = !!(quizPanel && qTitle && progressText && optionsEl && nextBtn && audio && quizProgFill && quizProgPct);
   if (!criticalOk){
     console.error("[Song Quiz] Missing critical DOM nodes. Check IDs in song.html.");
     return;
   }
 
-  let idx = 0;                // current question index
+  let idx = 0;              // next question index (0..9)
   let correct = 0;
   let selectedIndex = null;
   let answers = [];
@@ -144,7 +135,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedRes = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
   const done = localStorage.getItem(MB_KEYS.doneSong) === "1";
 
-  // ✅ If done -> show result, and clear progress
   if (done && savedRes){
     if (!savedRes.id){
       savedRes.id = ensureResultId(QUIZ_CARD.idPrefix, savedRes.id);
@@ -153,18 +143,18 @@ document.addEventListener("DOMContentLoaded", () => {
     clearProgressSong();
     showResult(savedRes);
   } else {
-    // ✅ restore progress
     const prog = loadProgressSong();
     if (prog){
       idx = prog.idx;
       correct = prog.correct;
       answers = prog.answers;
     }
-    // ❗️не зберігаємо прогрес на першому екрані без відповіді
+
+    // IMPORTANT: do NOT store progress for idx=0 as "started"
+    // It will start showing only after first answered (idx becomes 1)
     renderQuestion();
   }
 
-  // Save current state if tab closed
   window.addEventListener("beforeunload", () => {
     if (localStorage.getItem(MB_KEYS.doneSong) !== "1"){
       saveProgressSong(idx, correct, answers);
@@ -210,25 +200,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (playerTime) playerTime.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
   }
 
-  function updateQuizProgressUI(){
-    if (!quizProg || !progFill || !progPct) return;
-
-    const total = QUESTIONS.length;
-    const answered = Math.max(0, Math.min(idx, total)); // idx=1 => answered 1 => 10%
-
-    if (answered <= 0){
-      quizProg.style.display = "none";
-      progFill.style.width = "0%";
-      progPct.textContent = "0%";
-      return;
-    }
-
-    const pct = Math.round((answered / total) * 100);
-    quizProg.style.display = "flex";
-    progFill.style.width = `${pct}%`;
-    progPct.textContent = `${pct}%`;
-  }
-
   function renderQuestion(){
     const q = QUESTIONS[idx];
     if (!q) return;
@@ -237,11 +208,20 @@ document.addEventListener("DOMContentLoaded", () => {
     nextBtn.disabled = true;
     nextBtn.classList.remove("isShow");
 
-    qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
-    progressText.textContent = `Progress: ${idx + 1} / ${QUESTIONS.length}`;
+    const total = QUESTIONS.length;
 
-    updateQuizProgressUI();
+    // UI: current question number
+    qTitle.textContent = `Question ${idx + 1} of ${total}`;
 
+    // ✅ PROGRESS = answered count
+    const answered = idx; // because idx is "next question"
+    progressText.textContent = `Progress: ${answered} / ${total}`;
+
+    const pct = Math.round((answered / total) * 100);
+    quizProgFill.style.width = `${pct}%`;
+    quizProgPct.textContent = `${pct}%`;
+
+    // player reset
     audio.pause();
     audio.currentTime = 0;
     audio.src = q.audio || "";
@@ -264,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
       optionsEl.appendChild(btn);
     });
 
-    // зберігаємо тільки якщо є прогрес
+    // Save state (home will show progress only after first answer, because answered=0 doesn't display)
     saveProgressSong(idx, correct, answers);
   }
 
@@ -383,7 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* =========================
-   CANVAS DRAW (Song)
+   CANVAS DRAW (Song) - YOURS (unchanged)
 ========================= */
 async function drawQuizResultCard(canvas, d){
   const ctx = canvas.getContext("2d");
