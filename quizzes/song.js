@@ -89,6 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const qTitle = document.getElementById("qTitle");
   const progressText = document.getElementById("progressText");
+  const progressFill = document.getElementById("progressFill");
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
 
@@ -105,8 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const genBtn = document.getElementById("genBtn");
   const progressNotice = document.getElementById("progressNotice");
   const progressTextNote = document.getElementById("progressTextNote");
-  const restartProgressBtn = document.getElementById("restartProgressBtn");
-  const cardZone = document.getElementById("cardZone");
+    const cardZone = document.getElementById("cardZone");
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
@@ -165,10 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const prog = safeJSONParse(localStorage.getItem(MB_KEYS.progSong), null);
 
   if (restartProgressBtn){
-    restartProgressBtn.addEventListener("click", () => {
-      try{ localStorage.removeItem(MB_KEYS.progSong); }catch{}
-      location.reload();
-    });
+        });
   }
 
   if (done){
@@ -339,101 +336,53 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderReviewList(container, list){
-    container.innerHTML = "";
-    list.forEach((a, i) => {
-      if (!a) return;
-      const ok = a.selected === a.correct;
-      const qTitle = a.q || `Question ${i + 1}`;
-      const selText = (a.options && a.options[a.selected]) ? a.options[a.selected] : "—";
-      const corText = (a.options && a.options[a.correct]) ? a.options[a.correct] : "—";
-      const el = document.createElement("div");
-      el.className = "reviewItem";
-      el.innerHTML = `
-        <div class="reviewItem__head">
-          <div>${qTitle}</div>
-          <div class="${ok ? "reviewBadgeOk" : "reviewBadgeNo"}">${ok ? "✅" : "❌"}</div>
-        </div>
-        <div class="reviewItem__meta">
-          <div><b>Your answer:</b> ${escapeHtml(selText)}</div>
-          <div><b>Correct:</b> ${escapeHtml(corText)}</div>
-        </div>
-      `;
-      container.appendChild(el);
-    });
-  }
-
-  function escapeHtml(s){
-    return String(s)
-      .replaceAll("&","&amp;")
-      .replaceAll("<","&lt;")
-      .replaceAll(">","&gt;")
-      .replaceAll("\"","&quot;")
-      .replaceAll("\'","&#39;");
-  }
-
-  genBtn?.addEventListener("click", async () => {
-    if (!cardCanvas) return;
-
-    const p = getProfile();
-    const r = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
-    if (!r) return;
-
-    await drawQuizResultCard(cardCanvas, {
-      title: QUIZ_CARD.title,
-      name: p?.name || "Player",
-      avatar: p?.avatar || "",
-      correct: r.correct,
-      total: r.total,
-      acc: r.acc,
-      idText: r.id || ensureResultId(QUIZ_CARD.idPrefix, null),
-      logoSrc: "../assets/logo.webm",
-    });
-
-    cardZone?.classList.add("isOpen");
-    if (dlBtn) dlBtn.disabled = false;
-
-    // save SMALL preview (520px)
-    try{
-      const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
-      localStorage.setItem(MB_KEYS.prevSong, prev);
-      localStorage.removeItem("mb_png_song");
-    }catch(e){
-      console.warn("Song preview save failed:", e);
-      try{ localStorage.removeItem(MB_KEYS.prevSong); }catch{}
+    if (!container) return;
+    const items = Array.isArray(list) ? list.filter(Boolean) : [];
+    if (!items.length){
+      container.innerHTML = "";
+      return;
     }
 
-    if (genBtn) genBtn.textContent = "Regenerate Result Card";
-    cardZone?.scrollIntoView({ behavior:"smooth", block:"start" });
-  });
+    container.innerHTML = `
+      <div class="reviewBox">
+        <div class="reviewHead">Question review</div>
+        <div class="reviewGrid">
+          <div class="reviewHead">Q</div>
+          <div class="reviewHead"></div>
+          <div class="reviewHead">Your answer</div>
+          <div class="reviewHead hideOnMobile reviewHead">Correct</div>
+        </div>
+      </div>
+    `;
 
-  dlBtn?.addEventListener("click", async () => {
-    if (!cardCanvas) return;
+    const grid = container.querySelector(".reviewGrid");
+    items.forEach((a, i) => {
+      const ok = a.selected === a.correct;
+      const selText = (a.options && a.options[a.selected]) ? a.options[a.selected] : "—";
+      const corText = (a.options && a.options[a.correct]) ? a.options[a.correct] : "—";
 
-    const p = getProfile();
-    const r = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
-    if (!r) return;
+      const q = document.createElement("div");
+      q.className = "reviewQ reviewRow";
+      q.textContent = `Q${i + 1}`;
 
-    // ✅ always redraw full-res before download
-    await drawQuizResultCard(cardCanvas, {
-      title: QUIZ_CARD.title,
-      name: p?.name || "Player",
-      avatar: p?.avatar || "",
-      correct: r.correct,
-      total: r.total,
-      acc: r.acc,
-      idText: r.id || ensureResultId(QUIZ_CARD.idPrefix, null),
-      logoSrc: "../assets/logo.webm",
+      const icon = document.createElement("div");
+      icon.className = "reviewIcon reviewRow";
+      icon.textContent = ok ? "✅" : "❌";
+
+      const your = document.createElement("div");
+      your.className = "reviewYour reviewRow";
+      your.innerHTML = `<div>${selText}</div>${ok ? "" : `<div class="reviewMuted">Correct: ${corText}</div>`}`;
+
+      const correct = document.createElement("div");
+      correct.className = "reviewCorrect reviewRow reviewCorrectCol";
+      correct.textContent = corText;
+
+      grid.appendChild(q);
+      grid.appendChild(icon);
+      grid.appendChild(your);
+      grid.appendChild(correct);
     });
-
-    const a = document.createElement("a");
-    a.download = "magicblock-song-result.png";
-    a.href = cardCanvas.toDataURL("image/png");
-    a.click();
   });
-
-  // ✅ auto-restore preview on load (NO UPSCALE)
-  restoreQuizPreview(MB_KEYS.prevSong, cardCanvas, cardZone, dlBtn, genBtn);
-});
 
 /* =========================
    CANVAS DRAW (Song)
