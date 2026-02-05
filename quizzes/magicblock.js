@@ -1,7 +1,3 @@
-// quizzes/magicblock.js
-// Progress UI removed from quiz pages (you said you’ll delete it in HTML).
-// BUT: resume-progress for Home is still saved in localStorage (so Home can show Continue).
-
 const MB_KEYS = {
   profile: "mb_profile",
   doneMagic: "mb_done_magicblock",
