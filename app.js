@@ -376,33 +376,34 @@ if (mustCreate && !getProfile()){
     return key ? localStorage.getItem(key) === "1" : false;
   }
 
+  // ✅ FIXED RENDER (Champion locked until all 3 quizzes done)
   function render(){
     grid.innerHTML = "";
+
+    const allDone =
+      isDoneLocal(MB_KEYS.doneSong) &&
+      isDoneLocal(MB_KEYS.doneMovie) &&
+      isDoneLocal(MB_KEYS.doneMagic);
 
     items.forEach(it => {
       const png = localStorage.getItem(it.pngKey || "");
       const hasPng = !!(png && png.startsWith("data:image/"));
       const done = it.doneKey ? isDoneLocal(it.doneKey) : null;
 
+      const isChampion = it.key === "champion";
+
       const card = document.createElement("div");
       card.className = "rewardCard";
 
       const thumb = document.createElement("div");
       thumb.className = "rewardThumb";
-      
-      const isChampion = it.key === "champion";
-      const allDone2 =
-        isDoneLocal(MB_KEYS.doneSong) &&
-        isDoneLocal(MB_KEYS.doneMovie) &&
-        isDoneLocal(MB_KEYS.doneMagic);
-      
+
       if (hasPng){
         const img = document.createElement("img");
         img.alt = it.title;
         img.src = png;
         thumb.appendChild(img);
       } else {
-        // ✅ Champion locked state
         if (isChampion && !allDone) thumb.textContent = "Locked 🔒";
         else thumb.textContent = "Not generated";
       }
@@ -416,11 +417,15 @@ if (mustCreate && !getProfile()){
 
       const s = document.createElement("div");
       s.className = "rewardSub";
-      if (it.key === "champion"){
-        const allDone = isDoneLocal(MB_KEYS.doneSong) && isDoneLocal(MB_KEYS.doneMovie) && isDoneLocal(MB_KEYS.doneMagic);
-        s.textContent = allDone ? (hasPng ? "Ready ✅" : "Unlocked ✅ (generate on Champion page)") : "Locked (complete all quizzes)";
+
+      if (isChampion){
+        s.textContent = allDone
+          ? (hasPng ? "Ready ✅" : "Unlocked ✅ (generate on Champion page)")
+          : "Locked (complete all quizzes)";
       } else {
-        s.textContent = done ? (hasPng ? "Ready ✅" : "Completed ✅ (generate card inside quiz)") : "Not completed";
+        s.textContent = done
+          ? (hasPng ? "Ready ✅" : "Completed ✅ (generate card inside quiz)")
+          : "Not completed";
       }
 
       const actions = document.createElement("div");
@@ -428,25 +433,19 @@ if (mustCreate && !getProfile()){
 
       const openBtn = document.createElement("button");
       openBtn.className = "btn";
-      
-      const isChampion = it.key === "champion";
-      const allDone =
-        isDoneLocal(MB_KEYS.doneSong) &&
-        isDoneLocal(MB_KEYS.doneMovie) &&
-        isDoneLocal(MB_KEYS.doneMagic);
-      
-      openBtn.textContent = isChampion
-        ? (allDone ? "Open Champion" : "Locked")
-        : (done ? "Open quiz" : "Start");
-      
-      // ✅ робимо Champion недоступним поки не allDone
-      if (isChampion) openBtn.disabled = !allDone;
-      
+
+      if (isChampion){
+        openBtn.textContent = allDone ? "Open Champion" : "Locked";
+        openBtn.disabled = !allDone;
+      } else {
+        openBtn.textContent = done ? "Open quiz" : "Start";
+      }
+
       openBtn.addEventListener("click", () => {
         if (isChampion && !allDone) return; // locked — нічого не робимо
         location.href = it.openHref;
       });
-      
+
       actions.appendChild(openBtn);
 
       if (hasPng){
@@ -471,7 +470,7 @@ if (mustCreate && !getProfile()){
   function filenameFor(key, dataUrl){
     const isJpg = (dataUrl || "").startsWith("data:image/jpeg");
     const ext = isJpg ? "jpg" : "png";
-  
+
     if (key === "song") return `magicblock-song-result.${ext}`;
     if (key === "movie") return `magicblock-movie-result.${ext}`;
     if (key === "magicblock") return `magicblock-knowledge-result.${ext}`;
