@@ -419,8 +419,25 @@ if (mustCreate && !getProfile()){
 
       const openBtn = document.createElement("button");
       openBtn.className = "btn";
-      openBtn.textContent = it.key === "champion" ? "Open Champion" : (done ? "Open quiz" : "Start");
-      openBtn.addEventListener("click", () => (location.href = it.openHref));
+      
+      const isChampion = it.key === "champion";
+      const allDone =
+        isDoneLocal(MB_KEYS.doneSong) &&
+        isDoneLocal(MB_KEYS.doneMovie) &&
+        isDoneLocal(MB_KEYS.doneMagic);
+      
+      openBtn.textContent = isChampion
+        ? (allDone ? "Open Champion" : "Locked")
+        : (done ? "Open quiz" : "Start");
+      
+      // ✅ робимо Champion недоступним поки не allDone
+      if (isChampion) openBtn.disabled = !allDone;
+      
+      openBtn.addEventListener("click", () => {
+        if (isChampion && !allDone) return; // locked — нічого не робимо
+        location.href = it.openHref;
+      });
+      
       actions.appendChild(openBtn);
 
       if (hasPng){
