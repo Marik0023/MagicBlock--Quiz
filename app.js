@@ -482,8 +482,8 @@ if (mustCreate && !getProfile()){
       if (it.key === "movie" && done) clearProgressForQuiz("movie");
       if (it.key === "magicblock" && done) clearProgressForQuiz("magicblock");
 
-      const prog = it.progKey ? getProgNum(it.progKey) : 0;
-      const hasProg = !done && prog >= 1;
+      const nextQ = it.progKey ? getProgNum(it.progKey) : 0;
+      const hasProg = !done && nextQ >= 2;
 
       const isChampion = it.key === "champion";
 
@@ -519,7 +519,7 @@ if (mustCreate && !getProfile()){
           : "Locked (complete all quizzes)";
       } else {
         if (done) s.textContent = hasPng ? "Ready ✅" : "Completed ✅ (generate card inside quiz)";
-        else if (hasProg) s.textContent = `In progress — Q${prog} / 10`;
+        else if (hasProg) s.textContent = `In progress — Q${nextQ - 1} / 10`;
         else s.textContent = "Not completed";
       }
 
