@@ -14,6 +14,38 @@ const QUIZ_CARD = {
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
 function getProfile(){ return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
 
+// Storage can get full because previews are big (data URLs). If that happens,
+// clear ONLY preview items and retry saves.
+function clearBigPreviews(){
+  const keys = [
+    "mb_prev_song",
+    "mb_prev_movie",
+    "mb_prev_magicblock",
+    "mb_champ_png",
+    // legacy keys (older builds)
+    "mb_png_song",
+    "mb_png_movie",
+    "mb_png_magicblock",
+  ];
+  keys.forEach(k => { try{ localStorage.removeItem(k); }catch{} });
+}
+
+function safeLSSet(key, value){
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    // quota full -> clear previews and retry once
+    try{ clearBigPreviews(); }catch{}
+    try{
+      localStorage.setItem(key, value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 function forcePlayAll(selector){
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
@@ -139,12 +171,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  if (done && saved){
-    if (!saved.id){
-      saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
-      localStorage.setItem(MB_KEYS.resSong, JSON.stringify(saved));
+  if (done){
+    if (saved){
+      if (!saved.id){
+        saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
+        safeLSSet(MB_KEYS.resSong, JSON.stringify(saved));
+      }
+      showResult(saved);
+    } else {
+      // Edge case: marked completed but result missing (often quota/full localStorage).
+      // Try to reconstruct from progress so the quiz stays "once".
+      const p = getProfile();
+      const total = QUESTIONS.length;
+      let rebuilt = null;
+      if (prog && Array.isArray(prog.answers) && prog.answers.length){
+        const fixedAnswers = prog.answers.slice(0, total).map(a => a || null);
+        const c = fixedAnswers.filter(a => a && a.isCorrect).length;
+        rebuilt = {
+          total,
+          correct: c,
+          acc: total ? Math.round((c/total)*100) : 0,
+          name: p?.name || "Player",
+          id: ensureResultId(QUIZ_CARD.idPrefix, null),
+          ts: Date.now(),
+          answers: fixedAnswers,
+          missing: true
+        };
+      } else {
+        rebuilt = {
+          total,
+          correct: 0,
+          acc: 0,
+          name: p?.name || "Player",
+          id: ensureResultId(QUIZ_CARD.idPrefix, null),
+          ts: Date.now(),
+          answers: [],
+          missing: true
+        };
+      }
+      const rebuiltStr = JSON.stringify(rebuilt);
+      safeLSSet(MB_KEYS.resSong, rebuiltStr);
+      showResult(rebuilt);
     }
-    showResult(saved);
   } else {
     // ✅ Restore in-progress attempt (if user closed the tab mid-quiz)
     if (prog && typeof prog.idx === "number" && prog.idx > 0 && prog.idx < QUESTIONS.length){
@@ -200,10 +268,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveProgress(){
-    try{
-      localStorage.setItem(MB_KEYS.progSong, JSON.stringify({ idx, correct, answers, ts: Date.now() }));
-    }catch(e){
-      // if quota full, drop progress silently
+    const payload = JSON.stringify({ idx, correct, answers, ts: Date.now() });
+    if (!safeLSSet(MB_KEYS.progSong, payload)){
+      // If we still can't save, drop progress silently.
       try{ localStorage.removeItem(MB_KEYS.progSong); }catch{}
     }
   }
@@ -238,11 +305,18 @@ document.addEventListener("DOMContentLoaded", () => {
       acc,
       name: p?.name || "Player",
       id: ensureResultId(QUIZ_CARD.idPrefix, saved?.id || null),
+      // ✅ keep per-question review
+      answers,
       ts: Date.now()
     };
 
-    localStorage.setItem(MB_KEYS.doneSong, "1");
-    localStorage.setItem(MB_KEYS.resSong, JSON.stringify(result));
+    // Mark completed, but be robust to quota errors.
+    // If quota is full, we clear previews and retry so we don't lose results.
+    if (!safeLSSet(MB_KEYS.doneSong, "1")) {
+      // worst case: still allow showing result in UI
+    }
+    safeLSSet(MB_KEYS.resSong, JSON.stringify(result));
+    try { localStorage.removeItem(MB_KEYS.progSong); } catch {}
     showResult(result);
   });
 
