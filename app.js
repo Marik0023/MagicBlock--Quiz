@@ -391,7 +391,7 @@ if (mustCreate && !getProfile()){
       thumb.className = "rewardThumb";
       
       const isChampion = it.key === "champion";
-      const allDone =
+      const allDone2 =
         isDoneLocal(MB_KEYS.doneSong) &&
         isDoneLocal(MB_KEYS.doneMovie) &&
         isDoneLocal(MB_KEYS.doneMagic);
