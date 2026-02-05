@@ -5,7 +5,7 @@ const MB_KEYS = {
   prevSong: "mb_prev_song",
 
   // progress (resume)
-  progSong: "mb_prog_song",                 // number (1..10)
+  progSong: "mb_prog_song",                 // number of answered (0..9) but store only when >0
   progSongState: "mb_prog_song_state",      // JSON
 };
 
@@ -38,13 +38,25 @@ function ensureResultId(prefix, existing){
 }
 
 /* ===== Progress helpers (Song) ===== */
+function hasAnyAnswer(answers){
+  return Array.isArray(answers) && answers.some(v => Number.isFinite(v));
+}
+
 function saveProgressSong(idx0, correct, answers){
-  // store current question number as 1..10 (so Home can show Continue even on Q1)
-  const qNum = Math.max(1, Math.min(10, (idx0 + 1)));
-  localStorage.setItem(MB_KEYS.progSong, String(qNum));
+  // idx0 = current question index (0..9)
+  // answered count = idx0 (бо якщо idx0=1 => уже відповів 1 питання)
+  const answered = Math.max(0, Math.min(9, Number(idx0) || 0));
+
+  // ❗️До 1-ї відповіді нічого не зберігаємо -> на Home не буде 10%/Continue
+  if (answered <= 0 && !hasAnyAnswer(answers)){
+    clearProgressSong();
+    return;
+  }
+
+  localStorage.setItem(MB_KEYS.progSong, String(answered));
   localStorage.setItem(MB_KEYS.progSongState, JSON.stringify({
-    idx: idx0,
-    correct,
+    idx: Math.max(0, Math.min(9, Number(idx0) || 0)),
+    correct: Number.isFinite(correct) ? correct : 0,
     answers: Array.isArray(answers) ? answers : []
   }));
 }
@@ -55,11 +67,9 @@ function loadProgressSong(){
 
   if (!Number.isFinite(n) || n <= 0) return null;
 
-  const idx = state?.idx;
+  const idx = Number.isFinite(state?.idx) ? state.idx : n; // idx = current question index
   const correct = state?.correct;
   const answers = state?.answers;
-
-  if (!Number.isFinite(idx)) return { idx: Math.max(0, Math.min(9, n - 1)), correct: 0, answers: [] };
 
   return {
     idx: Math.max(0, Math.min(9, idx)),
@@ -96,8 +106,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const qTitle = document.getElementById("qTitle");
   const progressText = document.getElementById("progressText");
-  const progFill = document.getElementById("progFill");
-  const progPct  = document.getElementById("progPct");
+
+  // ✅ правильні id
+  const quizProg = document.getElementById("quizProg");
+  const progFill = document.getElementById("quizProgFill");
+  const progPct  = document.getElementById("quizProgPct");
+
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
 
@@ -122,15 +136,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  let idx = 0;
+  let idx = 0;                // current question index
   let correct = 0;
   let selectedIndex = null;
-  let answers = []; // store selected answers per question index (for future review)
+  let answers = [];
 
   const savedRes = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
   const done = localStorage.getItem(MB_KEYS.doneSong) === "1";
 
-  // ✅ If done -> show result, and clear progress just in case
+  // ✅ If done -> show result, and clear progress
   if (done && savedRes){
     if (!savedRes.id){
       savedRes.id = ensureResultId(QUIZ_CARD.idPrefix, savedRes.id);
@@ -146,9 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
       correct = prog.correct;
       answers = prog.answers;
     }
-
-    // ✅ ensure progress exists even if user closes immediately
-    saveProgressSong(idx, correct, answers);
+    // ❗️не зберігаємо прогрес на першому екрані без відповіді
     renderQuestion();
   }
 
@@ -198,6 +210,25 @@ document.addEventListener("DOMContentLoaded", () => {
     if (playerTime) playerTime.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
   }
 
+  function updateQuizProgressUI(){
+    if (!quizProg || !progFill || !progPct) return;
+
+    const total = QUESTIONS.length;
+    const answered = Math.max(0, Math.min(idx, total)); // idx=1 => answered 1 => 10%
+
+    if (answered <= 0){
+      quizProg.style.display = "none";
+      progFill.style.width = "0%";
+      progPct.textContent = "0%";
+      return;
+    }
+
+    const pct = Math.round((answered / total) * 100);
+    quizProg.style.display = "flex";
+    progFill.style.width = `${pct}%`;
+    progPct.textContent = `${pct}%`;
+  }
+
   function renderQuestion(){
     const q = QUESTIONS[idx];
     if (!q) return;
@@ -208,10 +239,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
     progressText.textContent = `Progress: ${idx + 1} / ${QUESTIONS.length}`;
-    // ✅ progress bar
-    const pct = Math.round(((idx + 1) / QUESTIONS.length) * 100);
-    if (progFill) progFill.style.width = `${pct}%`;
-    if (progPct)  progPct.textContent = `${pct}%`;
+
+    updateQuizProgressUI();
 
     audio.pause();
     audio.currentTime = 0;
@@ -235,7 +264,7 @@ document.addEventListener("DOMContentLoaded", () => {
       optionsEl.appendChild(btn);
     });
 
-    // ✅ keep progress updated as soon as question is shown
+    // зберігаємо тільки якщо є прогрес
     saveProgressSong(idx, correct, answers);
   }
 
@@ -278,9 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem(MB_KEYS.doneSong, "1");
     localStorage.setItem(MB_KEYS.resSong, JSON.stringify(result));
 
-    // ✅ clear progress so Home won't show Continue
     clearProgressSong();
-
     showResult(result);
   });
 
