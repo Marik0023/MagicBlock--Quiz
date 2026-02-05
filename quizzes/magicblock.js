@@ -1,10 +1,11 @@
 const MB_KEYS = {
   profile: "mb_profile",
+
   doneMagic: "mb_done_magicblock",
   resMagic: "mb_result_magicblock",
   prevMagic: "mb_prev_magicblock",
 
-  // progress (resume) — answered count (0..10)
+  // progress for HOME only (answered count 0..10)
   progMagic: "mb_prog_magicblock",
   progMagicState: "mb_prog_magicblock_state",
 };
@@ -14,12 +15,8 @@ const QUIZ_CARD = {
   idPrefix: "MagicStudent",
 };
 
-function safeJSONParse(v, fallback = null) {
-  try { return JSON.parse(v); } catch { return fallback; }
-}
-function getProfile() {
-  return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
-}
+function safeJSONParse(v, fallback = null) { try { return JSON.parse(v); } catch { return fallback; } }
+function getProfile() { return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
 
 function forcePlayAll(selector) {
   const vids = document.querySelectorAll(selector);
@@ -36,44 +33,44 @@ function makeSerial(len = 6) {
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
+
 function ensureResultId(prefix, existing) {
   if (existing && typeof existing === "string" && existing.startsWith("MB-")) return existing;
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
-/* ===== Progress helpers (MagicBlock)
-   We store:
-   - progMagic: answeredCount (0..10)  (answered == idx)
-   - progMagicState: { idx, correct, answers } where idx = next question index (0..10)
-*/
-function saveProgressMagic(idx0, correct, answers) {
-  const total = 10;
-  const idxSafe = Math.max(0, Math.min(total, Number(idx0) || 0)); // allow 0..10
-  const answered = idxSafe;
-
+/**
+ * Progress rules (IMPORTANT):
+ * - We store ONLY answered count for HOME.
+ * - We DO NOT write progress on page open.
+ * - We write progress only after user presses Next (and on beforeunload if already started).
+ */
+function saveProgressMagic(nextIdx, correct, answers) {
+  const answered = Math.max(0, Math.min(10, nextIdx)); // nextIdx == answered count
   localStorage.setItem(MB_KEYS.progMagic, String(answered));
   localStorage.setItem(MB_KEYS.progMagicState, JSON.stringify({
-    idx: idxSafe,
+    idx: Math.max(0, Math.min(9, nextIdx)), // next question index (0..9)
     correct: Number.isFinite(correct) ? correct : 0,
     answers: Array.isArray(answers) ? answers : []
   }));
 }
+
 function loadProgressMagic() {
   const answered = Number(localStorage.getItem(MB_KEYS.progMagic) || "0");
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMagicState), null);
-
   if (!Number.isFinite(answered) || answered <= 0) return null;
 
-  const idx = Number.isFinite(state?.idx) ? state.idx : answered; // fallback
+  const idx = Number.isFinite(state?.idx) ? state.idx : answered;
   const correct = Number.isFinite(state?.correct) ? state.correct : 0;
   const answers = Array.isArray(state?.answers) ? state.answers : [];
 
   return {
-    idx: Math.max(0, Math.min(10, idx)),
+    idx: Math.max(0, Math.min(9, idx)),
     correct,
     answers
   };
 }
+
 function clearProgressMagic() {
   localStorage.removeItem(MB_KEYS.progMagic);
   localStorage.removeItem(MB_KEYS.progMagicState);
@@ -84,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".brand__logo");
   renderTopProfile();
 
-  // ✅ Replace with your real questions
+  // TODO: replace with your real questions
   const QUESTIONS = [
     { text: "MagicBlock is…", options: ["A", "B", "C", "D"], correctIndex: 0 },
     { text: "MagicBlock helps with…", options: ["A", "B", "C", "D"], correctIndex: 1 },
@@ -103,7 +100,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const qTitle = document.getElementById("qTitle");
   const questionText = document.getElementById("questionText");
-
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
 
@@ -123,16 +119,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  let idx = 0;           // next question index (0..10)
+  let idx = 0;              // next question index (0..9)
   let correct = 0;
   let selectedIndex = null;
-  let answers = [];      // per question: selected option index
+  let answers = [];
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
   const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
 
   if (done && saved) {
-    // ensure id
     if (!saved.id) {
       saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
       localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(saved));
@@ -140,32 +135,23 @@ document.addEventListener("DOMContentLoaded", () => {
     clearProgressMagic();
     showResult(saved);
   } else {
-    // restore progress
     const prog = loadProgressMagic();
     if (prog) {
       idx = prog.idx;
       correct = prog.correct;
       answers = prog.answers;
     }
-
-    // If idx somehow points past end, finish safely
-    if (idx >= QUESTIONS.length) {
-      finishQuiz();
-    } else {
-      renderQuestion();
-      // ensure progress exists even if user closes immediately
-      saveProgressMagic(idx, correct, answers);
-    }
+    renderQuestion();
   }
 
   window.addEventListener("beforeunload", () => {
-    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1") {
+    // save ONLY if started (idx>0) and not done
+    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1" && idx > 0) {
       saveProgressMagic(idx, correct, answers);
     }
   });
 
   function renderQuestion() {
-    const total = QUESTIONS.length;
     const q = QUESTIONS[idx];
     if (!q) return;
 
@@ -173,7 +159,7 @@ document.addEventListener("DOMContentLoaded", () => {
     nextBtn.disabled = true;
     nextBtn.classList.remove("isShow");
 
-    qTitle.textContent = `Question ${idx + 1} of ${total}`;
+    qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
     questionText.textContent = q.text || "—";
 
     optionsEl.innerHTML = "";
@@ -182,19 +168,14 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.className = "optionBtn";
       btn.type = "button";
       btn.textContent = `${String.fromCharCode(65 + i)}) ${label}`;
-
       btn.addEventListener("click", () => {
         selectedIndex = i;
         updateSelectedUI();
         nextBtn.disabled = false;
         nextBtn.classList.add("isShow");
       });
-
       optionsEl.appendChild(btn);
     });
-
-    // Save resume-state when question is shown
-    saveProgressMagic(idx, correct, answers);
   }
 
   function updateSelectedUI() {
@@ -208,21 +189,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const q = QUESTIONS[idx];
     answers[idx] = selectedIndex;
-
     if (selectedIndex === q.correctIndex) correct++;
 
-    idx++;
+    idx++; // answered +1
+
+    // ✅ save progress ONLY AFTER answering
+    saveProgressMagic(idx, correct, answers);
 
     if (idx < QUESTIONS.length) {
-      saveProgressMagic(idx, correct, answers);
       renderQuestion();
       return;
     }
 
-    finishQuiz();
-  });
-
-  function finishQuiz() {
+    // finished
     const total = QUESTIONS.length;
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
@@ -230,23 +209,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const old = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
     const id = ensureResultId(QUIZ_CARD.idPrefix, old?.id || null);
 
-    const result = {
-      total,
-      correct,
-      acc,
-      name: p?.name || "Player",
-      id,
-      ts: Date.now()
-    };
+    const result = { total, correct, acc, name: p?.name || "Player", id, ts: Date.now() };
 
     localStorage.setItem(MB_KEYS.doneMagic, "1");
     localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(result));
 
-    // ✅ clear quiz-side resume so Home won’t show Continue
     clearProgressMagic();
-
     showResult(result);
-  }
+  });
 
   function showResult(result) {
     quizPanel.style.display = "none";
@@ -280,7 +250,6 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
       localStorage.setItem(MB_KEYS.prevMagic, prev);
-      localStorage.removeItem("mb_png_magicblock");
     } catch (e) {
       console.warn("MagicBlock preview save failed:", e);
       try { localStorage.removeItem(MB_KEYS.prevMagic); } catch {}
@@ -361,7 +330,6 @@ function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
 
   const ctx = t.getContext("2d");
   ctx.drawImage(srcCanvas, 0, 0, tw, th);
-
   return t.toDataURL("image/jpeg", quality);
 }
 
@@ -378,7 +346,6 @@ async function drawQuizResultCard(canvas, d) {
   ctx.clearRect(0, 0, W, H);
 
   const card = { x: 0, y: 0, w: W, h: H, r: 96 };
-
   drawRoundedRect(ctx, card.x, card.y, card.w, card.h, card.r);
   ctx.fillStyle = "#BFC0C2";
   ctx.fill();
@@ -562,7 +529,7 @@ async function loadWebmFrameAsBitmap(src, t = 0.05) {
 
     v.addEventListener("error", () => { cleanup(); resolve(null); }, { once: true });
 
-    v.addEventListener("loadedmetadata", () => {
+    v.addEventListener("loadedmetadata", async () => {
       try {
         const tt = Math.min(Math.max(t, 0), Math.max(0.01, (v.duration || 1) - 0.01));
         v.currentTime = tt;
@@ -584,6 +551,7 @@ async function loadWebmFrameAsBitmap(src, t = 0.05) {
             resolve(null);
           }
         }, { once: true });
+
       } catch {
         cleanup();
         resolve(null);
