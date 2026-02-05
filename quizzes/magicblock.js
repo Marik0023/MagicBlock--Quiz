@@ -1,3 +1,5 @@
+// quizzes/magicblock.js
+
 const MB_KEYS = {
   profile: "mb_profile",
 
@@ -5,9 +7,9 @@ const MB_KEYS = {
   resMagic: "mb_result_magicblock",
   prevMagic: "mb_prev_magicblock",
 
-  // progress for HOME only (answered count 0..10)
+  // progress for HOME (question number 1..10)
   progMagic: "mb_prog_magicblock",
-  progMagicState: "mb_prog_magicblock_state",
+  progMagicState: "mb_prog_magicblock_state", // JSON { idx, correct, answers }
 };
 
 const QUIZ_CARD = {
@@ -15,8 +17,12 @@ const QUIZ_CARD = {
   idPrefix: "MagicStudent",
 };
 
-function safeJSONParse(v, fallback = null) { try { return JSON.parse(v); } catch { return fallback; } }
-function getProfile() { return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
+function safeJSONParse(v, fallback = null) {
+  try { return JSON.parse(v); } catch { return fallback; }
+}
+function getProfile() {
+  return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
+}
 
 function forcePlayAll(selector) {
   const vids = document.querySelectorAll(selector);
@@ -33,41 +39,43 @@ function makeSerial(len = 6) {
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
-
 function ensureResultId(prefix, existing) {
   if (existing && typeof existing === "string" && existing.startsWith("MB-")) return existing;
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
-/**
- * Progress rules (IMPORTANT):
- * - We store ONLY answered count for HOME.
- * - We DO NOT write progress on page open.
- * - We write progress only after user presses Next (and on beforeunload if already started).
- */
-function saveProgressMagic(nextIdx, correct, answers) {
-  const answered = Math.max(0, Math.min(10, nextIdx)); // nextIdx == answered count
-  localStorage.setItem(MB_KEYS.progMagic, String(answered));
-  localStorage.setItem(MB_KEYS.progMagicState, JSON.stringify({
-    idx: Math.max(0, Math.min(9, nextIdx)), // next question index (0..9)
-    correct: Number.isFinite(correct) ? correct : 0,
-    answers: Array.isArray(answers) ? answers : []
-  }));
+/* ===== Progress helpers (MagicBlock) =====
+   HOME expects mb_prog_magicblock as question number (1..10).
+   If user is on Question 5 => idx=4 => store 5 (50%).
+*/
+function saveProgressMagic(idx0, correct, answers) {
+  const total = 10;
+  const idx = Math.max(0, Math.min(total - 1, Number(idx0) || 0));
+  const qNum = Math.max(1, Math.min(total, idx + 1)); // 1..10
+
+  localStorage.setItem(MB_KEYS.progMagic, String(qNum));
+  localStorage.setItem(
+    MB_KEYS.progMagicState,
+    JSON.stringify({
+      idx,
+      correct: Number.isFinite(correct) ? correct : 0,
+      answers: Array.isArray(answers) ? answers : [],
+    })
+  );
 }
 
 function loadProgressMagic() {
-  const answered = Number(localStorage.getItem(MB_KEYS.progMagic) || "0");
+  const n = Number(localStorage.getItem(MB_KEYS.progMagic) || "0"); // 1..10
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMagicState), null);
-  if (!Number.isFinite(answered) || answered <= 0) return null;
+  if (!Number.isFinite(n) || n <= 0) return null;
 
-  const idx = Number.isFinite(state?.idx) ? state.idx : answered;
-  const correct = Number.isFinite(state?.correct) ? state.correct : 0;
-  const answers = Array.isArray(state?.answers) ? state.answers : [];
+  const fallbackIdx = Math.max(0, Math.min(9, n - 1));
+  const idx = Number.isFinite(state?.idx) ? state.idx : fallbackIdx;
 
   return {
     idx: Math.max(0, Math.min(9, idx)),
-    correct,
-    answers
+    correct: Number.isFinite(state?.correct) ? state.correct : 0,
+    answers: Array.isArray(state?.answers) ? state.answers : [],
   };
 }
 
@@ -81,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".brand__logo");
   renderTopProfile();
 
-  // TODO: replace with your real questions
+  // ✅ Put your real questions here
   const QUESTIONS = [
     { text: "MagicBlock is…", options: ["A", "B", "C", "D"], correctIndex: 0 },
     { text: "MagicBlock helps with…", options: ["A", "B", "C", "D"], correctIndex: 1 },
@@ -113,40 +121,46 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
-  const criticalOk = !!(quizPanel && resultPanel && qTitle && questionText && optionsEl && nextBtn);
+  const criticalOk = !!(quizPanel && qTitle && questionText && optionsEl && nextBtn && resultPanel);
   if (!criticalOk) {
     console.error("[MagicBlock Quiz] Missing critical DOM nodes. Check IDs in magicblock.html.");
     return;
   }
 
-  let idx = 0;              // next question index (0..9)
+  let idx = 0; // 0..9
   let correct = 0;
   let selectedIndex = null;
   let answers = [];
 
-  const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
+  const savedRes = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
   const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
 
-  if (done && saved) {
-    if (!saved.id) {
-      saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
-      localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(saved));
+  // If completed => show result
+  if (done && savedRes) {
+    if (!savedRes.id) {
+      savedRes.id = ensureResultId(QUIZ_CARD.idPrefix, savedRes.id);
+      localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(savedRes));
     }
     clearProgressMagic();
-    showResult(saved);
-  } else {
-    const prog = loadProgressMagic();
-    if (prog) {
-      idx = prog.idx;
-      correct = prog.correct;
-      answers = prog.answers;
-    }
-    renderQuestion();
+    showResult(savedRes);
+    restoreQuizPreview(MB_KEYS.prevMagic, cardCanvas, cardZone, dlBtn, genBtn);
+    return;
   }
 
+  // restore progress
+  const prog = loadProgressMagic();
+  if (prog) {
+    idx = prog.idx;
+    correct = prog.correct;
+    answers = prog.answers;
+  }
+
+  // keep HOME progress synced immediately
+  saveProgressMagic(idx, correct, answers);
+  renderQuestion();
+
   window.addEventListener("beforeunload", () => {
-    // save ONLY if started (idx>0) and not done
-    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1" && idx > 0) {
+    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1") {
       saveProgressMagic(idx, correct, answers);
     }
   });
@@ -176,6 +190,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       optionsEl.appendChild(btn);
     });
+
+    // sync HOME progress on every render
+    saveProgressMagic(idx, correct, answers);
   }
 
   function updateSelectedUI() {
@@ -189,14 +206,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const q = QUESTIONS[idx];
     answers[idx] = selectedIndex;
+
     if (selectedIndex === q.correctIndex) correct++;
 
-    idx++; // answered +1
-
-    // ✅ save progress ONLY AFTER answering
-    saveProgressMagic(idx, correct, answers);
+    idx++;
 
     if (idx < QUESTIONS.length) {
+      saveProgressMagic(idx, correct, answers);
       renderQuestion();
       return;
     }
@@ -209,7 +225,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const old = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
     const id = ensureResultId(QUIZ_CARD.idPrefix, old?.id || null);
 
-    const result = { total, correct, acc, name: p?.name || "Player", id, ts: Date.now() };
+    const result = {
+      total,
+      correct,
+      acc,
+      name: p?.name || "Player",
+      id,
+      ts: Date.now(),
+    };
 
     localStorage.setItem(MB_KEYS.doneMagic, "1");
     localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(result));
@@ -250,6 +273,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
       localStorage.setItem(MB_KEYS.prevMagic, prev);
+      localStorage.removeItem("mb_png_magicblock");
     } catch (e) {
       console.warn("MagicBlock preview save failed:", e);
       try { localStorage.removeItem(MB_KEYS.prevMagic); } catch {}
@@ -330,6 +354,7 @@ function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
 
   const ctx = t.getContext("2d");
   ctx.drawImage(srcCanvas, 0, 0, tw, th);
+
   return t.toDataURL("image/jpeg", quality);
 }
 
@@ -365,7 +390,7 @@ async function drawQuizResultCard(canvas, d) {
   const logoBitmap = await loadWebmFrameAsBitmap(d.logoSrc || "../assets/logo.webm", 0.05);
   if (logoBitmap) drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
 
-  const title = d.title || "How well do you know MagicBlock?";
+  const title = d.title || QUIZ_CARD.title;
   const titleLeft = logoBox.x + logoBox.w + 70;
   const titleRight = W - padX;
   const titleMaxW = Math.max(260, titleRight - titleLeft);
@@ -551,7 +576,6 @@ async function loadWebmFrameAsBitmap(src, t = 0.05) {
             resolve(null);
           }
         }, { once: true });
-
       } catch {
         cleanup();
         resolve(null);
