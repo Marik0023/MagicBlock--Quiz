@@ -1,11 +1,23 @@
 const MB_KEYS = {
   profile: "mb_profile",
+
   doneSong: "mb_done_song",
   doneMovie: "mb_done_movie",
   doneMagic: "mb_done_magicblock",
+
   resSong: "mb_result_song",
   resMovie: "mb_result_movie",
   resMagic: "mb_result_magicblock",
+
+  // progress (resume) — NUMBER 1..10
+  progSong: "mb_prog_song",
+  progMovie: "mb_prog_movie",
+  progMagic: "mb_prog_magicblock",
+
+  // (optional) progress state JSON (we don’t need it on home, but we clear it)
+  progSongState: "mb_prog_song_state",
+  progMovieState: "mb_prog_movie_state",
+  progMagicState: "mb_prog_magicblock_state",
 
   // champion persistence
   champId: "mb_champ_id",
@@ -37,8 +49,7 @@ function getProfile(){
 }
 
 /**
- * ✅ FIX 2: if storage full -> clear champion PNG and retry later
- * returns true/false
+ * ✅ If storage full -> clear champion PNG and retry later
  */
 function setProfile(profile){
   try{
@@ -47,7 +58,6 @@ function setProfile(profile){
   } catch (e){
     console.error("setProfile failed:", e);
 
-    // free space: champion PNG is huge
     localStorage.removeItem(MB_KEYS.champPng);
     localStorage.removeItem(MB_KEYS.champReady);
 
@@ -56,6 +66,7 @@ function setProfile(profile){
   }
 }
 
+/* ===== autoplay helper (bg/logo videos) ===== */
 function forcePlayAll(selector){
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
@@ -71,6 +82,27 @@ forcePlayAll(".resultLogo");
 
 const y = document.getElementById("year");
 if (y) y.textContent = new Date().getFullYear();
+
+/* ===== progress helpers (home only) ===== */
+function getProgNum(key){
+  const n = Number(localStorage.getItem(key) || "0");
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(99, n));
+}
+function clearProgressForQuiz(k){
+  if (k === "song"){
+    localStorage.removeItem(MB_KEYS.progSong);
+    localStorage.removeItem(MB_KEYS.progSongState);
+  }
+  if (k === "movie"){
+    localStorage.removeItem(MB_KEYS.progMovie);
+    localStorage.removeItem(MB_KEYS.progMovieState);
+  }
+  if (k === "magicblock"){
+    localStorage.removeItem(MB_KEYS.progMagic);
+    localStorage.removeItem(MB_KEYS.progMagicState);
+  }
+}
 
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
@@ -103,7 +135,7 @@ function openProfileModal(force = false){
   const nameInput = document.getElementById("profileName");
   const fileInput = document.getElementById("profileFile");
   const preview = document.getElementById("profilePreview");
-  const startBtn = document.getElementById("profileSaveBtn");
+  const saveBtn = document.getElementById("profileSaveBtn");
   const avatarBox = document.getElementById("avatarBox");
 
   if (nameInput) nameInput.value = p?.name || "";
@@ -125,7 +157,7 @@ function openProfileModal(force = false){
     closeBtn.style.display = (force && !p) ? "none" : "flex";
   }
 
-  if (startBtn) startBtn.disabled = false;
+  if (saveBtn) saveBtn.disabled = false;
 }
 
 function closeProfileModal(){
@@ -148,15 +180,12 @@ function initProfileModal(){
 
   closeBtn?.addEventListener("click", closeProfileModal);
 
-  avatarPickBtn?.addEventListener("click", () => {
-    fileInput?.click();
-  });
+  avatarPickBtn?.addEventListener("click", () => fileInput?.click());
 
   fileInput?.addEventListener("change", async () => {
     const f = fileInput.files?.[0];
     if (!f) return;
 
-    // ✅ compress avatar to avoid localStorage quota
     const dataUrl = await fileToCompressedDataURL(f, 512, 0.85);
 
     if (preview) preview.src = dataUrl;
@@ -202,7 +231,6 @@ function initProfileModal(){
         const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0, nw, nh);
 
-        // JPEG is much smaller for photos
         resolve(c.toDataURL("image/jpeg", quality));
       };
 
@@ -239,37 +267,61 @@ function updateChampionGlowUI(allDone){
     if (btn) btn.textContent = "Generate Champion Card";
   }
 
-  // make preview clickable
   if (preview){
     preview.style.cursor = "pointer";
     preview.onclick = () => (location.href = championHref());
   }
 }
 
+/**
+ * ✅ Buttons logic:
+ * - Done => "Open"
+ * - Not done + progress exists => "Continue" (+ optional "Q6")
+ * - Not done + no progress => "Start"
+ * Also clears progress automatically if done (safety)
+ */
 function updateBadges(){
   const map = {
-    song: MB_KEYS.doneSong,
-    movie: MB_KEYS.doneMovie,
-    magicblock: MB_KEYS.doneMagic,
+    song: { doneKey: MB_KEYS.doneSong, progKey: MB_KEYS.progSong },
+    movie: { doneKey: MB_KEYS.doneMovie, progKey: MB_KEYS.progMovie },
+    magicblock: { doneKey: MB_KEYS.doneMagic, progKey: MB_KEYS.progMagic },
   };
 
   let allDone = true;
 
-  Object.entries(map).forEach(([k, storageKey]) => {
-    const done = isDone(storageKey);
+  Object.entries(map).forEach(([k, keys]) => {
+    const done = isDone(keys.doneKey);
     if (!done) allDone = false;
+
+    // if done, progress must not exist
+    if (done){
+      clearProgressForQuiz(k);
+    }
 
     const badge = document.querySelector(`[data-badge="${k}"]`);
     if (badge) badge.style.display = done ? "inline-flex" : "none";
 
     const btn = document.querySelector(`[data-start="${k}"]`);
-    if (btn) btn.textContent = done ? "Open" : "Start";
+    if (!btn) return;
+
+    if (done){
+      btn.textContent = "Open";
+      return;
+    }
+
+    const p = getProgNum(keys.progKey);
+    if (p > 0){
+      // You can show question number if you want:
+      // btn.textContent = `Continue (Q${p})`;
+      btn.textContent = "Continue";
+    } else {
+      btn.textContent = "Start";
+    }
   });
 
   const champ = document.getElementById("championWrap");
   if (champ) champ.style.display = allDone ? "block" : "none";
 
-  // Glow Champion card on Home if generated
   updateChampionGlowUI(allDone);
 }
 
@@ -287,6 +339,8 @@ function initHomeButtons(){
   document.querySelectorAll("[data-start]").forEach(btn => {
     btn.addEventListener("click", () => {
       const k = btn.getAttribute("data-start");
+
+      // Home navigation (same for Start/Continue/Open)
       if (k === "song") location.href = "quizzes/song.html";
       if (k === "movie") location.href = "quizzes/movie.html";
       if (k === "magicblock") location.href = "quizzes/magicblock.html";
@@ -329,6 +383,7 @@ if (mustCreate && !getProfile()){
       title: "Quiz 1 — Song",
       sub: "Guess the Song by the Melody",
       doneKey: MB_KEYS.doneSong,
+      progKey: MB_KEYS.progSong,
       pngKey: REWARD_KEYS.songPng,
       openHref: "quizzes/song.html"
     },
@@ -337,6 +392,7 @@ if (mustCreate && !getProfile()){
       title: "Quiz 2 — Movie",
       sub: "Guess the Movie by the Frame",
       doneKey: MB_KEYS.doneMovie,
+      progKey: MB_KEYS.progMovie,
       pngKey: REWARD_KEYS.moviePng,
       openHref: "quizzes/movie.html"
     },
@@ -345,6 +401,7 @@ if (mustCreate && !getProfile()){
       title: "Quiz 3 — MagicBlock",
       sub: "How well do you know MagicBlock?",
       doneKey: MB_KEYS.doneMagic,
+      progKey: MB_KEYS.progMagic,
       pngKey: REWARD_KEYS.magicPng,
       openHref: "quizzes/magicblock.html"
     },
@@ -353,6 +410,7 @@ if (mustCreate && !getProfile()){
       title: "Champion Card",
       sub: "Unlocked after all 3 quizzes",
       doneKey: null,
+      progKey: null,
       pngKey: MB_KEYS.champPng,
       openHref: "champion.html"
     }
@@ -376,7 +434,6 @@ if (mustCreate && !getProfile()){
     return key ? localStorage.getItem(key) === "1" : false;
   }
 
-  // ✅ FIXED RENDER (Champion locked until all 3 quizzes done)
   function render(){
     grid.innerHTML = "";
 
@@ -389,6 +446,14 @@ if (mustCreate && !getProfile()){
       const png = localStorage.getItem(it.pngKey || "");
       const hasPng = !!(png && png.startsWith("data:image/"));
       const done = it.doneKey ? isDoneLocal(it.doneKey) : null;
+
+      // clear progress if done
+      if (it.key === "song" && done) clearProgressForQuiz("song");
+      if (it.key === "movie" && done) clearProgressForQuiz("movie");
+      if (it.key === "magicblock" && done) clearProgressForQuiz("magicblock");
+
+      const prog = it.progKey ? getProgNum(it.progKey) : 0;
+      const hasProg = !done && prog > 0;
 
       const isChampion = it.key === "champion";
 
@@ -423,9 +488,9 @@ if (mustCreate && !getProfile()){
           ? (hasPng ? "Ready ✅" : "Unlocked ✅ (generate on Champion page)")
           : "Locked (complete all quizzes)";
       } else {
-        s.textContent = done
-          ? (hasPng ? "Ready ✅" : "Completed ✅ (generate card inside quiz)")
-          : "Not completed";
+        if (done) s.textContent = hasPng ? "Ready ✅" : "Completed ✅ (generate card inside quiz)";
+        else if (hasProg) s.textContent = `In progress — Q${prog} / 10`;
+        else s.textContent = "Not completed";
       }
 
       const actions = document.createElement("div");
@@ -438,11 +503,12 @@ if (mustCreate && !getProfile()){
         openBtn.textContent = allDone ? "Open Champion" : "Locked";
         openBtn.disabled = !allDone;
       } else {
-        openBtn.textContent = done ? "Open quiz" : "Start";
+        if (done) openBtn.textContent = "Open quiz";
+        else openBtn.textContent = hasProg ? "Continue" : "Start";
       }
 
       openBtn.addEventListener("click", () => {
-        if (isChampion && !allDone) return; // locked — нічого не робимо
+        if (isChampion && !allDone) return;
         location.href = it.openHref;
       });
 
