@@ -3,6 +3,10 @@ const MB_KEYS = {
   doneMovie: "mb_done_movie",
   resMovie: "mb_result_movie",
   prevMovie: "mb_prev_movie",
+
+  // progress (resume)
+  progMovie: "mb_prog_movie",
+  progMovieState: "mb_prog_movie_state",
 };
 
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
@@ -15,6 +19,38 @@ function forcePlayAll(selector){
   tryPlay();
   window.addEventListener("click", tryPlay, { once:true });
   window.addEventListener("touchstart", tryPlay, { once:true });
+}
+
+/* ===== Progress helpers (Movie) ===== */
+function saveProgressMovie(idx0, correct, answers){
+  const qNum = Math.max(1, Math.min(10, (idx0 + 1)));
+  localStorage.setItem(MB_KEYS.progMovie, String(qNum));
+  localStorage.setItem(MB_KEYS.progMovieState, JSON.stringify({
+    idx: idx0,
+    correct,
+    answers: Array.isArray(answers) ? answers : []
+  }));
+}
+function loadProgressMovie(){
+  const n = Number(localStorage.getItem(MB_KEYS.progMovie) || "0");
+  const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMovieState), null);
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  const idx = state?.idx;
+  const correct = state?.correct;
+  const answers = state?.answers;
+
+  if (!Number.isFinite(idx)) return { idx: Math.max(0, Math.min(9, n - 1)), correct: 0, answers: [] };
+
+  return {
+    idx: Math.max(0, Math.min(9, idx)),
+    correct: Number.isFinite(correct) ? correct : 0,
+    answers: Array.isArray(answers) ? answers : []
+  };
+}
+function clearProgressMovie(){
+  localStorage.removeItem(MB_KEYS.progMovie);
+  localStorage.removeItem(MB_KEYS.progMovieState);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -60,9 +96,27 @@ document.addEventListener("DOMContentLoaded", () => {
   let idx = 0;
   let correct = 0;
   let selectedIndex = null;
+  let answers = [];
 
-  if (done && saved) showResult(saved);
-  else renderQuestion();
+  if (done && saved){
+    clearProgressMovie();
+    showResult(saved);
+  } else {
+    const prog = loadProgressMovie();
+    if (prog){
+      idx = prog.idx;
+      correct = prog.correct;
+      answers = prog.answers;
+    }
+    saveProgressMovie(idx, correct, answers);
+    renderQuestion();
+  }
+
+  window.addEventListener("beforeunload", () => {
+    if (localStorage.getItem(MB_KEYS.doneMovie) !== "1"){
+      saveProgressMovie(idx, correct, answers);
+    }
+  });
 
   function renderQuestion(){
     selectedIndex = null;
@@ -97,6 +151,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       optionsEl.appendChild(btn);
     });
+
+    saveProgressMovie(idx, correct, answers);
   }
 
   function updateSelectedUI(){
@@ -109,10 +165,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectedIndex === null) return;
 
     const q = QUESTIONS[idx];
+    answers[idx] = selectedIndex;
+
     if (selectedIndex === q.correctIndex) correct++;
 
     idx++;
     if (idx < QUESTIONS.length){
+      saveProgressMovie(idx, correct, answers);
       renderQuestion();
       return;
     }
@@ -128,6 +187,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     localStorage.setItem(MB_KEYS.doneMovie, "1");
     localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(result));
+
+    clearProgressMovie();
     showResult(result);
   });
 
@@ -180,7 +241,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
     if (!r) return;
 
-    // ✅ redraw full-res before export
     await drawQuizResultCard(cardCanvas, {
       title: "Guess the Movie by the Frame",
       name: p?.name || "Player",
@@ -198,7 +258,6 @@ document.addEventListener("DOMContentLoaded", () => {
     a.click();
   });
 
-  // ✅ auto-restore preview (NO UPSCALE)
   restoreQuizPreview(MB_KEYS.prevMovie, cardCanvas, cardZone, dlBtn, genBtn);
 });
 
@@ -230,6 +289,52 @@ function renderTopProfile(){
 function buildId(prefix){
   const serial = Math.random().toString(36).slice(2, 7).toUpperCase();
   return `MB-${prefix}-${serial}`;
+}
+
+/* ===== preview helpers + canvas helpers ===== */
+async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn){
+  const prev = localStorage.getItem(previewKey);
+  if (!prev || !prev.startsWith("data:image/") || !cardCanvas) return false;
+
+  try{
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = rej;
+      img.src = prev;
+    });
+
+    cardCanvas.width = img.naturalWidth || img.width;
+    cardCanvas.height = img.naturalHeight || img.height;
+
+    const ctx = cardCanvas.getContext("2d");
+    ctx.clearRect(0,0,cardCanvas.width,cardCanvas.height);
+    ctx.drawImage(img, 0, 0);
+
+    cardZone?.classList.add("isOpen");
+    if (dlBtn) dlBtn.disabled = false;
+    if (genBtn) genBtn.textContent = "Regenerate Result Card";
+    return true;
+  }catch(e){
+    console.warn("restore movie preview failed:", e);
+    return false;
+  }
+}
+
+function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
+  const w = srcCanvas.width;
+  const scale = Math.min(1, maxW / w);
+  const tw = Math.round(w * scale);
+  const th = Math.round(srcCanvas.height * scale);
+
+  const t = document.createElement("canvas");
+  t.width = tw;
+  t.height = th;
+
+  const ctx = t.getContext("2d");
+  ctx.drawImage(srcCanvas, 0, 0, tw, th);
+
+  return t.toDataURL("image/jpeg", quality);
 }
 
 /* =========================
@@ -339,55 +444,6 @@ async function drawQuizResultCard(canvas, d){
   ctx.fillStyle = "rgba(0,0,0,.34)";
   ctx.font = "900 24px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.fillText(`Accuracy: ${d.acc}%`, avatarBox.x, H - 56);
-}
-
-/* =========================
-   ✅ RESTORE PREVIEW (NO UPSCALE)
-========================= */
-async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn){
-  const prev = localStorage.getItem(previewKey);
-  if (!prev || !prev.startsWith("data:image/") || !cardCanvas) return false;
-
-  try{
-    const img = new Image();
-    await new Promise((res, rej) => {
-      img.onload = res;
-      img.onerror = rej;
-      img.src = prev;
-    });
-
-    cardCanvas.width = img.naturalWidth || img.width;
-    cardCanvas.height = img.naturalHeight || img.height;
-
-    const ctx = cardCanvas.getContext("2d");
-    ctx.clearRect(0,0,cardCanvas.width,cardCanvas.height);
-    ctx.drawImage(img, 0, 0);
-
-    cardZone?.classList.add("isOpen");
-    if (dlBtn) dlBtn.disabled = false;
-    if (genBtn) genBtn.textContent = "Regenerate Result Card";
-    return true;
-  }catch(e){
-    console.warn("restore movie preview failed:", e);
-    return false;
-  }
-}
-
-function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
-  const w = srcCanvas.width;
-  const scale = Math.min(1, maxW / w);
-
-  const tw = Math.round(w * scale);
-  const th = Math.round(srcCanvas.height * scale);
-
-  const t = document.createElement("canvas");
-  t.width = tw;
-  t.height = th;
-
-  const ctx = t.getContext("2d");
-  ctx.drawImage(srcCanvas, 0, 0, tw, th);
-
-  return t.toDataURL("image/jpeg", quality);
 }
 
 function drawRoundedRect(ctx, x, y, w, h, r){
