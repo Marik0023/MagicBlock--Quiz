@@ -212,7 +212,7 @@ img{max-width:100%; display:block}
 }
 .quizCard__title{
   margin:8px 0 8px;
-  font-size: 26px;
+  font-size: 18px;
   line-height:1.1;
   letter-spacing:-.3px;
   font-weight: 800;
@@ -220,7 +220,7 @@ img{max-width:100%; display:block}
 .quizCard__desc{
   margin:0;
   color: var(--muted);
-  font-size: 16px;
+  font-size: 10px;
 }
 .quizCard__footer{
   margin-top:auto;
