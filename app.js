@@ -9,12 +9,12 @@ const MB_KEYS = {
   resMovie: "mb_result_movie",
   resMagic: "mb_result_magicblock",
 
-  // progress (resume) — NUMBER 1..10
+  // progress (resume) — NUMBER 0..10 (show only if >=1)
   progSong: "mb_prog_song",
   progMovie: "mb_prog_movie",
   progMagic: "mb_prog_magicblock",
 
-  // (optional) progress state JSON (we don’t need it on home, but we clear it)
+  // optional progress JSON state (not used on home)
   progSongState: "mb_prog_song_state",
   progMovieState: "mb_prog_movie_state",
   progMagicState: "mb_prog_magicblock_state",
@@ -58,6 +58,7 @@ function setProfile(profile){
   } catch (e){
     console.error("setProfile failed:", e);
 
+    // free space: champion PNG can be huge
     localStorage.removeItem(MB_KEYS.champPng);
     localStorage.removeItem(MB_KEYS.champReady);
 
@@ -83,12 +84,13 @@ forcePlayAll(".resultLogo");
 const y = document.getElementById("year");
 if (y) y.textContent = new Date().getFullYear();
 
-/* ===== progress helpers (home only) ===== */
+/* ===== progress helpers (HOME) ===== */
 function getProgNum(key){
   const n = Number(localStorage.getItem(key) || "0");
   if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(99, n));
+  return Math.max(0, Math.min(10, n));
 }
+
 function clearProgressForQuiz(k){
   if (k === "song"){
     localStorage.removeItem(MB_KEYS.progSong);
@@ -104,6 +106,7 @@ function clearProgressForQuiz(k){
   }
 }
 
+/* ===== Profile pill ===== */
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
   if (!pill) return;
@@ -179,7 +182,6 @@ function initProfileModal(){
   const avatarBox = document.getElementById("avatarBox");
 
   closeBtn?.addEventListener("click", closeProfileModal);
-
   avatarPickBtn?.addEventListener("click", () => fileInput?.click());
 
   fileInput?.addEventListener("change", async () => {
@@ -197,9 +199,7 @@ function initProfileModal(){
     const name = (nameInput?.value || "").trim() || "Player";
 
     let avatar = old.avatar || "";
-    if ((preview?.src || "").startsWith("data:")) {
-      avatar = preview.src;
-    }
+    if ((preview?.src || "").startsWith("data:")) avatar = preview.src;
 
     const ok = setProfile({ name, avatar });
     if (!ok) return;
@@ -273,47 +273,34 @@ function updateChampionGlowUI(allDone){
   }
 }
 
-function getProgObj(key){
-  return safeJSONParse(localStorage.getItem(key), null);
-}
-
-function progPercent(nextIndex, total){
-  const n = Math.max(0, Math.min(nextIndex || 0, total));
-  return Math.round((n / total) * 100);
-}
-
+/* ✅ HOME: mini progress under each button */
 function updateMiniProgressUI(){
   const total = 10;
 
   const map = {
-    song: MB_KEYS.progSong,
-    movie: MB_KEYS.progMovie,
-    magicblock: MB_KEYS.progMagic,
+    song: { progKey: MB_KEYS.progSong, doneKey: MB_KEYS.doneSong },
+    movie: { progKey: MB_KEYS.progMovie, doneKey: MB_KEYS.doneMovie },
+    magicblock: { progKey: MB_KEYS.progMagic, doneKey: MB_KEYS.doneMagic },
   };
 
-  Object.entries(map).forEach(([k, progKey]) => {
+  Object.entries(map).forEach(([k, keys]) => {
     const wrap = document.querySelector(`.miniProg[data-prog="${k}"]`);
     if (!wrap) return;
 
-    const doneKey =
-      k === "song" ? MB_KEYS.doneSong :
-      k === "movie" ? MB_KEYS.doneMovie :
-      MB_KEYS.doneMagic;
-
-    const isCompleted = localStorage.getItem(doneKey) === "1";
-    if (isCompleted){
+    // completed => hide
+    if (localStorage.getItem(keys.doneKey) === "1"){
       wrap.style.display = "none";
       return;
     }
 
-    const prog = getProgObj(progKey);
-    const next = prog?.next ?? 0; // next = індекс наступного питання (0..10)
-    if (!next){
+    // show only if >= 1
+    const prog = getProgNum(keys.progKey);
+    if (prog < 1){
       wrap.style.display = "none";
       return;
     }
 
-    const pct = progPercent(next, total);
+    const pct = Math.round((prog / total) * 100);
     wrap.style.display = "flex";
 
     const fill = wrap.querySelector(".miniProg__fill");
@@ -326,9 +313,9 @@ function updateMiniProgressUI(){
 /**
  * ✅ Buttons logic:
  * - Done => "Open"
- * - Not done + progress exists => "Continue" (+ optional "Q6")
+ * - Not done + progress exists => "Continue"
  * - Not done + no progress => "Start"
- * Also clears progress automatically if done (safety)
+ * Also clears progress if done.
  */
 function updateBadges(){
   const map = {
@@ -343,7 +330,6 @@ function updateBadges(){
     const done = isDone(keys.doneKey);
     if (!done) allDone = false;
 
-    // if done, progress must not exist
     if (done){
       clearProgressForQuiz(k);
     }
@@ -360,13 +346,7 @@ function updateBadges(){
     }
 
     const p = getProgNum(keys.progKey);
-    if (p > 0){
-      // You can show question number if you want:
-      // btn.textContent = `Continue (Q${p})`;
-      btn.textContent = "Continue";
-    } else {
-      btn.textContent = "Start";
-    }
+    btn.textContent = (p >= 1) ? "Continue" : "Start";
   });
 
   const champ = document.getElementById("championWrap");
@@ -378,8 +358,8 @@ function updateBadges(){
 
 function initHomeButtons(){
   const pill = document.getElementById("profilePill");
-
   const hasModal = !!document.getElementById("profileModal");
+
   if (pill){
     pill.addEventListener("click", () => {
       if (hasModal) openProfileModal(false);
@@ -390,8 +370,6 @@ function initHomeButtons(){
   document.querySelectorAll("[data-start]").forEach(btn => {
     btn.addEventListener("click", () => {
       const k = btn.getAttribute("data-start");
-
-      // Home navigation (same for Start/Continue/Open)
       if (k === "song") location.href = "quizzes/song.html";
       if (k === "movie") location.href = "quizzes/movie.html";
       if (k === "magicblock") location.href = "quizzes/magicblock.html";
@@ -498,13 +476,12 @@ if (mustCreate && !getProfile()){
       const hasPng = !!(png && png.startsWith("data:image/"));
       const done = it.doneKey ? isDoneLocal(it.doneKey) : null;
 
-      // clear progress if done
       if (it.key === "song" && done) clearProgressForQuiz("song");
       if (it.key === "movie" && done) clearProgressForQuiz("movie");
       if (it.key === "magicblock" && done) clearProgressForQuiz("magicblock");
 
       const prog = it.progKey ? getProgNum(it.progKey) : 0;
-      const hasProg = !done && prog > 0;
+      const hasProg = !done && prog >= 1;
 
       const isChampion = it.key === "champion";
 
