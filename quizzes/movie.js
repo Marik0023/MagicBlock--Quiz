@@ -1,7 +1,7 @@
 const MB_KEYS = {
   profile: "mb_profile",
   doneMovie: "mb_done_movie",
-  resMovie: "mb_res_movie",
+  resMovie: "mb_result_movie",
   prevMovie: "mb_prev_movie",
   progMovie: "mb_prog_movie",
 };
@@ -144,7 +144,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const old = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
     const id = old?.id || buildId("MagicViewer");
 
-    const result = { total, correct, acc, name: p?.name || "Player", id, ts: Date.now() };
+    const result = {
+      total,
+      correct,
+      acc,
+      name: p?.name || "Player",
+      id,
+      ts: Date.now(),
+      // ✅ for Result review
+      answers: answers.slice(0, total),
+    };
 
     localStorage.setItem(MB_KEYS.doneMovie, "1");
     localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(result));
@@ -159,6 +168,46 @@ document.addEventListener("DOMContentLoaded", () => {
     rTotal.textContent = String(result.total);
     rCorrect.textContent = String(result.correct);
     rAcc.textContent = `${result.acc}%`;
+
+    renderReview(result);
+  }
+
+  function renderReview(result){
+    const wrap = document.getElementById("reviewWrap");
+    const list = document.getElementById("reviewList");
+    if (!wrap || !list) return;
+
+    const ans = Array.isArray(result?.answers) ? result.answers : [];
+    if (!ans.length){
+      wrap.style.display = "none";
+      return;
+    }
+
+    wrap.style.display = "block";
+    list.innerHTML = "";
+
+    ans.forEach((a, i) => {
+      const row = document.createElement("div");
+      row.className = "reviewRow";
+
+      const q = document.createElement("div");
+      q.className = "reviewQ";
+      q.textContent = `Q${i+1}`;
+
+      const picked = document.createElement("div");
+      picked.className = "reviewPick";
+      const isCorrect = a.selected === a.correct;
+      picked.innerHTML = `${isCorrect ? "✅" : "❌"} <span class="reviewLetter">${String.fromCharCode(65 + a.selected)}</span> ${a.options?.[a.selected] ?? ""}`;
+
+      const correct = document.createElement("div");
+      correct.className = "reviewCorrect";
+      correct.innerHTML = `Correct: <span class="reviewLetter">${String.fromCharCode(65 + a.correct)}</span> ${a.options?.[a.correct] ?? ""}`;
+
+      row.appendChild(q);
+      row.appendChild(picked);
+      row.appendChild(correct);
+      list.appendChild(row);
+    });
   }
 
   genBtn?.addEventListener("click", async () => {
