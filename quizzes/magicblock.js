@@ -3,6 +3,7 @@ const MB_KEYS = {
   doneMagic: "mb_done_magicblock",
   resMagic: "mb_result_magicblock",
   prevMagic: "mb_prev_magicblock",
+  progMagic: "mb_prog_magicblock",
 };
 
 const QUIZ_CARD = {
@@ -66,6 +67,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const rAcc = document.getElementById("rAcc");
 
   const genBtn = document.getElementById("genBtn");
+  const progressNotice = document.getElementById("progressNotice");
+  const progressTextNote = document.getElementById("progressTextNote");
+  const restartProgressBtn = document.getElementById("restartProgressBtn");
   const cardZone = document.getElementById("cardZone");
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
@@ -73,9 +77,18 @@ document.addEventListener("DOMContentLoaded", () => {
   let idx = 0;
   let correct = 0;
   let selectedIndex = null;
+  let answers = [];
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
   const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
+  const prog = safeJSONParse(localStorage.getItem(MB_KEYS.progMagic), null);
+
+  if (restartProgressBtn){
+    restartProgressBtn.addEventListener("click", () => {
+      try{ localStorage.removeItem(MB_KEYS.progMagic); }catch{}
+      location.reload();
+    });
+  }
 
   if (done && saved){
     if (!saved.id){
@@ -84,6 +97,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     showResult(saved);
   } else {
+    if (prog && typeof prog.idx === "number" && prog.idx > 0 && prog.idx < QUESTIONS.length){
+      idx = Math.floor(prog.idx);
+      correct = Math.max(0, Math.floor(prog.correct || 0));
+      answers = Array.isArray(prog.answers) ? prog.answers : [];
+      if (progressNotice){
+        progressNotice.style.display = "flex";
+        if (progressTextNote) progressTextNote.textContent = `Progress restored — continue from Q${idx + 1} / ${QUESTIONS.length}`;
+      }
+    }
     renderQuestion();
   }
 
@@ -119,13 +141,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function saveProgress(){
+    try{
+      localStorage.setItem(MB_KEYS.progMagic, JSON.stringify({ idx, correct, answers, ts: Date.now() }));
+    }catch(e){
+      try{ localStorage.removeItem(MB_KEYS.progMagic); }catch{}
+    }
+  }
+
   nextBtn.addEventListener("click", () => {
     if (selectedIndex === null) return;
 
     const q = QUESTIONS[idx];
+    answers[idx] = {
+      q: q.q || `Question ${idx + 1}`,
+      options: q.options,
+      selected: selectedIndex,
+      correct: q.correctIndex
+    };
     if (selectedIndex === q.correctIndex) correct++;
 
     idx++;
+    saveProgress();
     if (idx < QUESTIONS.length){
       renderQuestion();
       return;
