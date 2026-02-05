@@ -1,3 +1,5 @@
+function safeParse(v){ try{ return JSON.parse(v);}catch(e){ return null; } }
+
 const MB_KEYS = {
   profile: "mb_profile",
   doneSong: "mb_done_song",
@@ -247,30 +249,90 @@ function updateChampionGlowUI(allDone){
 }
 
 function updateBadges(){
-  const map = {
-    song: MB_KEYS.doneSong,
-    movie: MB_KEYS.doneMovie,
-    magicblock: MB_KEYS.doneMagic,
-  };
+  const songDone = localStorage.getItem("mb_done_song") === "1";
+  const movieDone = localStorage.getItem("mb_done_movie") === "1";
+  const magicDone = localStorage.getItem("mb_done_magic") === "1";
 
-  let allDone = true;
+  const songProg = safeParse(localStorage.getItem("mb_prog_song"));
+  const movieProg = safeParse(localStorage.getItem("mb_prog_movie"));
+  const magicProg = safeParse(localStorage.getItem("mb_prog_magic"));
 
-  Object.entries(map).forEach(([k, storageKey]) => {
-    const done = isDone(storageKey);
-    if (!done) allDone = false;
+  function apply(btn, badge, done, prog){
+    if (!btn || !badge) return;
 
-    const badge = document.querySelector(`[data-badge="${k}"]`);
-    if (badge) badge.style.display = done ? "inline-flex" : "none";
+    // status badge
+    if (done){
+      badge.textContent = "✓ Completed";
+      badge.classList.remove("hidden");
+      btn.textContent = "Open";
+      btn.dataset.mode = "open";
+      clearMiniProgress(btn);
+      return;
+    }
 
-    const btn = document.querySelector(`[data-start="${k}"]`);
-    if (btn) btn.textContent = done ? "Open" : "Start";
-  });
+    // in-progress
+    if (prog && typeof prog.currentIndex === "number" && prog.currentIndex > 0){
+      btn.textContent = "Continue";
+      btn.dataset.mode = "continue";
+      badge.textContent = "In progress";
+      badge.classList.remove("hidden");
+      setMiniProgress(btn, prog.currentIndex, 10);
+      return;
+    }
 
-  const champ = document.getElementById("championWrap");
-  if (champ) champ.style.display = allDone ? "block" : "none";
+    // fresh start
+    badge.classList.add("hidden");
+    btn.textContent = "Start";
+    btn.dataset.mode = "start";
+    clearMiniProgress(btn);
+  }
 
-  // Glow Champion card on Home if generated
-  updateChampionGlowUI(allDone);
+  function ensureProgressEl(btn){
+    const footer = btn.closest(".quizCard__footer") || btn.parentElement;
+    if (!footer) return null;
+    let el = footer.querySelector(".miniProgress");
+    if (!el){
+      el = document.createElement("div");
+      el.className = "miniProgress";
+      el.innerHTML = '<div class="miniProgressFill"></div>';
+      footer.appendChild(el);
+    }
+    return el;
+  }
+
+  function setMiniProgress(btn, idx, total){
+    const el = ensureProgressEl(btn);
+    if (!el) return;
+    const fill = el.querySelector(".miniProgressFill");
+    const pct = Math.max(0, Math.min(100, (idx / total) * 100));
+    fill.style.width = pct + "%";
+    el.style.display = "block";
+  }
+
+  function clearMiniProgress(btn){
+    const footer = btn.closest(".quizCard__footer") || btn.parentElement;
+    const el = footer ? footer.querySelector(".miniProgress") : null;
+    if (el) el.style.display = "none";
+  }
+
+  apply(
+    document.querySelector('[data-start="song"]'),
+    document.querySelector('[data-badge="song"]'),
+    songDone,
+    songProg
+  );
+  apply(
+    document.querySelector('[data-start="movie"]'),
+    document.querySelector('[data-badge="movie"]'),
+    movieDone,
+    movieProg
+  );
+  apply(
+    document.querySelector('[data-start="magicblock"]'),
+    document.querySelector('[data-badge="magicblock"]'),
+    magicDone,
+    magicProg
+  );
 }
 
 function initHomeButtons(){
