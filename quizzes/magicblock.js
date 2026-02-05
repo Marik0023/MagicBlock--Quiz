@@ -5,7 +5,7 @@ const MB_KEYS = {
   prevMagic: "mb_prev_magicblock",
 
   // progress (resume)
-  progMagic: "mb_prog_magicblock",
+  progMagic: "mb_prog_magicblock",          // answered count (store only when >0)
   progMagicState: "mb_prog_magicblock_state",
 };
 
@@ -37,13 +37,23 @@ function ensureResultId(prefix, existing){
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
+function hasAnyAnswer(answers){
+  return Array.isArray(answers) && answers.some(v => Number.isFinite(v));
+}
+
 /* ===== Progress helpers (MagicBlock) ===== */
 function saveProgressMagic(idx0, correct, answers){
-  const qNum = Math.max(1, Math.min(10, (idx0 + 1)));
-  localStorage.setItem(MB_KEYS.progMagic, String(qNum));
+  const answered = Math.max(0, Math.min(9, Number(idx0) || 0));
+
+  if (answered <= 0 && !hasAnyAnswer(answers)){
+    clearProgressMagic();
+    return;
+  }
+
+  localStorage.setItem(MB_KEYS.progMagic, String(answered));
   localStorage.setItem(MB_KEYS.progMagicState, JSON.stringify({
-    idx: idx0,
-    correct,
+    idx: Math.max(0, Math.min(9, Number(idx0) || 0)),
+    correct: Number.isFinite(correct) ? correct : 0,
     answers: Array.isArray(answers) ? answers : []
   }));
 }
@@ -52,11 +62,9 @@ function loadProgressMagic(){
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMagicState), null);
   if (!Number.isFinite(n) || n <= 0) return null;
 
-  const idx = state?.idx;
+  const idx = Number.isFinite(state?.idx) ? state.idx : n;
   const correct = state?.correct;
   const answers = state?.answers;
-
-  if (!Number.isFinite(idx)) return { idx: Math.max(0, Math.min(9, n - 1)), correct: 0, answers: [] };
 
   return {
     idx: Math.max(0, Math.min(9, idx)),
@@ -96,6 +104,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
 
+  // ✅ progress DOM
+  const quizProg = document.getElementById("quizProg");
+  const progFill = document.getElementById("quizProgFill");
+  const progPct  = document.getElementById("quizProgPct");
+
   const rName = document.getElementById("rName");
   const rTotal = document.getElementById("rTotal");
   const rCorrect = document.getElementById("rCorrect");
@@ -128,8 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
       correct = prog.correct;
       answers = prog.answers;
     }
-
-    saveProgressMagic(idx, correct, answers);
     renderQuestion();
   }
 
@@ -138,6 +149,25 @@ document.addEventListener("DOMContentLoaded", () => {
       saveProgressMagic(idx, correct, answers);
     }
   });
+
+  function updateQuizProgressUI(){
+    if (!quizProg || !progFill || !progPct) return;
+
+    const total = QUESTIONS.length;
+    const answered = Math.max(0, Math.min(idx, total));
+
+    if (answered <= 0){
+      quizProg.style.display = "none";
+      progFill.style.width = "0%";
+      progPct.textContent = "0%";
+      return;
+    }
+
+    const pct = Math.round((answered / total) * 100);
+    quizProg.style.display = "flex";
+    progFill.style.width = `${pct}%`;
+    progPct.textContent = `${pct}%`;
+  }
 
   function renderQuestion(){
     selectedIndex = null;
@@ -148,6 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
     progressText.textContent = `Progress: ${idx + 1} / ${QUESTIONS.length}`;
     questionText.textContent = q.text;
+
+    updateQuizProgressUI();
 
     optionsEl.innerHTML = "";
     q.options.forEach((label, i) => {
@@ -196,9 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const id = ensureResultId(QUIZ_CARD.idPrefix, old?.id || null);
 
     const result = {
-      total,
-      correct,
-      acc,
+      total, correct, acc,
       name: p?.name || "Player",
       id,
       ts: Date.now()
