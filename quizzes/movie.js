@@ -9,6 +9,26 @@ const MB_KEYS = {
 function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
 function getProfile(){ return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
 
+// Storage can get full because previews are big (data URLs). If that happens,
+// clear ONLY preview items and retry saves.
+function clearBigPreviews(){
+  const keys = [
+    "mb_prev_song",
+    "mb_prev_movie",
+    "mb_prev_magic",
+    "mb_champ_png"
+  ];
+  keys.forEach(k => { try{ localStorage.removeItem(k); }catch{} });
+}
+
+function safeLSSet(key, value){
+  try{ localStorage.setItem(key, value); return true; }
+  catch(e){
+    clearBigPreviews();
+    try{ localStorage.setItem(key, value); return true; }catch{return false}
+  }
+}
+
 function forcePlayAll(selector){
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
@@ -66,8 +86,51 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedIndex = null;
   let answers = [];
 
-  if (done && saved) showResult(saved);
-  else renderQuestion();
+  if (done){
+    if (saved){
+      showResult(saved);
+    } else {
+      // Marked completed but result missing (often quota/full localStorage).
+      // Try to reconstruct from progress so the quiz stays "once".
+      const prog = safeJSONParse(localStorage.getItem(MB_KEYS.progMovie), null);
+      const p = getProfile();
+      let reconstructed = null;
+      if (prog && Array.isArray(prog.answers) && prog.answers.length){
+        const total = QUESTIONS.length;
+        const correct2 = prog.answers.filter(a => a && a.isCorrect).length;
+        reconstructed = {
+          total,
+          correct: correct2,
+          acc: Math.round((correct2 / total) * 100),
+          name: p?.name || "Player",
+          id: ensureResultId(QUIZ_CARD.idPrefix, null),
+          ts: Date.now(),
+          answers: prog.answers.slice(0, total),
+          reconstructed: true
+        };
+      } else {
+        reconstructed = {
+          total: QUESTIONS.length,
+          correct: 0,
+          acc: 0,
+          name: p?.name || "Player",
+          id: ensureResultId(QUIZ_CARD.idPrefix, null),
+          ts: Date.now(),
+          answers: [],
+          reconstructed: true
+        };
+      }
+
+      const resStr = JSON.stringify(reconstructed);
+      if (!safeLSSet(MB_KEYS.resMovie, resStr)){
+        clearBigPreviews();
+        safeLSSet(MB_KEYS.resMovie, resStr);
+      }
+      showResult(reconstructed);
+    }
+  } else {
+    renderQuestion();
+  }
 
   function renderQuestion(){
     selectedIndex = null;
@@ -111,10 +174,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveProgress(){
-    try{
-      localStorage.setItem(MB_KEYS.progMovie, JSON.stringify({ idx, correct, answers, ts: Date.now() }));
-    }catch(e){
-      try{ localStorage.removeItem(MB_KEYS.progMovie); }catch{}
+    const payload = JSON.stringify({ idx, correct, answers, ts: Date.now() });
+    if (!safeLSSet(MB_KEYS.progMovie, payload)){
+      clearBigPreviews();
+      if (!safeLSSet(MB_KEYS.progMovie, payload)){
+        try{ localStorage.removeItem(MB_KEYS.progMovie); }catch{}
+      }
     }
   }
 
@@ -155,8 +220,15 @@ document.addEventListener("DOMContentLoaded", () => {
       answers: answers.slice(0, total),
     };
 
-    localStorage.setItem(MB_KEYS.doneMovie, "1");
-    localStorage.setItem(MB_KEYS.resMovie, JSON.stringify(result));
+    const resultStr = JSON.stringify(result);
+    if (!safeLSSet(MB_KEYS.doneMovie, "1") || !safeLSSet(MB_KEYS.resMovie, resultStr)){
+      clearBigPreviews();
+      safeLSSet(MB_KEYS.doneMovie, "1");
+      safeLSSet(MB_KEYS.resMovie, resultStr);
+    }
+
+    // quiz is finished, progress no longer needed
+    try{ localStorage.removeItem(MB_KEYS.progMovie); }catch{}
     showResult(result);
   });
 
