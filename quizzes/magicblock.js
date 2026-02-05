@@ -3,6 +3,10 @@ const MB_KEYS = {
   doneMagic: "mb_done_magicblock",
   resMagic: "mb_result_magicblock",
   prevMagic: "mb_prev_magicblock",
+
+  // progress (resume)
+  progMagic: "mb_prog_magicblock",
+  progMagicState: "mb_prog_magicblock_state",
 };
 
 const QUIZ_CARD = {
@@ -31,6 +35,38 @@ function makeSerial(len = 6){
 function ensureResultId(prefix, existing){
   if (existing && typeof existing === "string" && existing.startsWith("MB-")) return existing;
   return `MB-${prefix}-${makeSerial(6)}`;
+}
+
+/* ===== Progress helpers (MagicBlock) ===== */
+function saveProgressMagic(idx0, correct, answers){
+  const qNum = Math.max(1, Math.min(10, (idx0 + 1)));
+  localStorage.setItem(MB_KEYS.progMagic, String(qNum));
+  localStorage.setItem(MB_KEYS.progMagicState, JSON.stringify({
+    idx: idx0,
+    correct,
+    answers: Array.isArray(answers) ? answers : []
+  }));
+}
+function loadProgressMagic(){
+  const n = Number(localStorage.getItem(MB_KEYS.progMagic) || "0");
+  const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMagicState), null);
+  if (!Number.isFinite(n) || n <= 0) return null;
+
+  const idx = state?.idx;
+  const correct = state?.correct;
+  const answers = state?.answers;
+
+  if (!Number.isFinite(idx)) return { idx: Math.max(0, Math.min(9, n - 1)), correct: 0, answers: [] };
+
+  return {
+    idx: Math.max(0, Math.min(9, idx)),
+    correct: Number.isFinite(correct) ? correct : 0,
+    answers: Array.isArray(answers) ? answers : []
+  };
+}
+function clearProgressMagic(){
+  localStorage.removeItem(MB_KEYS.progMagic);
+  localStorage.removeItem(MB_KEYS.progMagicState);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -73,6 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let idx = 0;
   let correct = 0;
   let selectedIndex = null;
+  let answers = [];
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
   const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
@@ -82,10 +119,25 @@ document.addEventListener("DOMContentLoaded", () => {
       saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
       localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(saved));
     }
+    clearProgressMagic();
     showResult(saved);
   } else {
+    const prog = loadProgressMagic();
+    if (prog){
+      idx = prog.idx;
+      correct = prog.correct;
+      answers = prog.answers;
+    }
+
+    saveProgressMagic(idx, correct, answers);
     renderQuestion();
   }
+
+  window.addEventListener("beforeunload", () => {
+    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1"){
+      saveProgressMagic(idx, correct, answers);
+    }
+  });
 
   function renderQuestion(){
     selectedIndex = null;
@@ -111,6 +163,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       optionsEl.appendChild(btn);
     });
+
+    saveProgressMagic(idx, correct, answers);
   }
 
   function updateSelectedUI(){
@@ -123,10 +177,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (selectedIndex === null) return;
 
     const q = QUESTIONS[idx];
+    answers[idx] = selectedIndex;
+
     if (selectedIndex === q.correctIndex) correct++;
 
     idx++;
     if (idx < QUESTIONS.length){
+      saveProgressMagic(idx, correct, answers);
       renderQuestion();
       return;
     }
@@ -149,6 +206,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     localStorage.setItem(MB_KEYS.doneMagic, "1");
     localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(result));
+
+    clearProgressMagic();
     showResult(result);
   });
 
@@ -201,7 +260,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
     if (!r) return;
 
-    // ✅ redraw full-res before export
     await drawQuizResultCard(cardCanvas, {
       title: QUIZ_CARD.title,
       name: p?.name || "Player",
@@ -219,122 +277,10 @@ document.addEventListener("DOMContentLoaded", () => {
     a.click();
   });
 
-  // ✅ auto-restore preview (NO UPSCALE)
   restoreQuizPreview(MB_KEYS.prevMagic, cardCanvas, cardZone, dlBtn, genBtn);
 });
 
-/* =========================
-   CANVAS DRAW (MagicBlock)
-========================= */
-async function drawQuizResultCard(canvas, d){
-  const ctx = canvas.getContext("2d");
-
-  canvas.width = 1600;
-  canvas.height = 900;
-
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0,0,W,H);
-
-  const card = { x: 0, y: 0, w: W, h: H, r: 96 };
-
-  drawRoundedRect(ctx, card.x, card.y, card.w, card.h, card.r);
-  ctx.fillStyle = "#BFC0C2";
-  ctx.fill();
-
-  const vg = ctx.createRadialGradient(W*0.52, H*0.38, 140, W*0.52, H*0.38, W*0.95);
-  vg.addColorStop(0, "rgba(255,255,255,.22)");
-  vg.addColorStop(1, "rgba(0,0,0,.12)");
-  ctx.fillStyle = vg;
-  ctx.fillRect(0,0,W,H);
-
-  addNoise(ctx, 0, 0, W, H, 0.055);
-
-  const padX = 130;
-  const padTop = 120;
-
-  const logoBox = { x: padX, y: padTop - 55, w: 380, h: 120 };
-  const logoBitmap = await loadWebmFrameAsBitmap(d.logoSrc || "../assets/logo.webm", 0.05);
-  if (logoBitmap) drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
-
-  const title = d.title || "How well do you know MagicBlock?";
-  const titleLeft  = logoBox.x + logoBox.w + 70;
-  const titleRight = W - padX;
-  const titleMaxW  = Math.max(260, titleRight - titleLeft);
-
-  const titleY = padTop + 10;
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = fitText(ctx, title, 76, 52, titleMaxW, "950");
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  ctx.fillText(title, titleLeft, titleY);
-
-  const avatarBox = { x: padX + 10, y: 240, w: 260, h: 260, r: 80 };
-  await drawAvatarRounded(ctx, d.avatar, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
-
-  ctx.save();
-  drawRoundedRect(ctx, avatarBox.x, avatarBox.y, avatarBox.w, avatarBox.h, avatarBox.r);
-  ctx.strokeStyle = "rgba(255,255,255,.18)";
-  ctx.lineWidth = 5;
-  ctx.stroke();
-  ctx.restore();
-
-  const leftColX = avatarBox.x + avatarBox.w + 120;
-  const rightX   = W - padX;
-
-  ctx.textAlign = "left";
-  ctx.textBaseline = "alphabetic";
-
-  ctx.fillStyle = "rgba(255,255,255,.72)";
-  ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("Your Name:", leftColX, avatarBox.y + 80);
-
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "950 64px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(d.name || "Player", leftColX, avatarBox.y + 150);
-
-  ctx.strokeStyle = "rgba(255,255,255,.18)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(leftColX, avatarBox.y + 185);
-  ctx.lineTo(rightX, avatarBox.y + 185);
-  ctx.stroke();
-
-  ctx.fillStyle = "rgba(255,255,255,.72)";
-  ctx.font = "800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("Score", leftColX, avatarBox.y + 275);
-
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "980 80px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`${d.correct} / ${d.total}`, leftColX, avatarBox.y + 360);
-
-  const idLabelY = 665;
-  ctx.fillStyle = "rgba(255,255,255,.70)";
-  ctx.font = "800 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText("ID Name:", leftColX, idLabelY);
-
-  const pillX = leftColX;
-  const pillY = 685;
-  const pillW = Math.min(940, rightX - pillX);
-  const pillH = 74;
-
-  ctx.fillStyle = "rgba(0,0,0,.28)";
-  drawRoundedRect(ctx, pillX, pillY, pillW, pillH, 36);
-  ctx.fill();
-
-  ctx.fillStyle = "rgba(255,255,255,.92)";
-  ctx.font = "900 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.textBaseline = "middle";
-  ctx.fillText(d.idText || "MB-MagicStudent-XXXXX", pillX + 30, pillY + pillH/2);
-
-  ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "rgba(0,0,0,.34)";
-  ctx.font = "900 24px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  ctx.fillText(`Accuracy: ${d.acc}%`, avatarBox.x, H - 56);
-}
-
-/* =========================
-   ✅ RESTORE PREVIEW (NO UPSCALE)
-========================= */
+/* ===== preview + canvas helpers (same as yours) ===== */
 async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn){
   const prev = localStorage.getItem(previewKey);
   if (!prev || !prev.startsWith("data:image/") || !cardCanvas) return false;
@@ -381,133 +327,8 @@ function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
   return t.toDataURL("image/jpeg", quality);
 }
 
-function drawRoundedRect(ctx, x, y, w, h, r){
-  const rr = Math.min(r, w/2, h/2);
-  ctx.beginPath();
-  ctx.moveTo(x+rr, y);
-  ctx.arcTo(x+w, y, x+w, y+h, rr);
-  ctx.arcTo(x+w, y+h, x, y+h, rr);
-  ctx.arcTo(x, y+h, x, y, rr);
-  ctx.arcTo(x, y, x+w, y, rr);
-  ctx.closePath();
-}
-
-function fitText(ctx, text, maxPx, minPx, maxW, weight="900"){
-  for (let px=maxPx; px>=minPx; px--){
-    const f = `${weight} ${px}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-    ctx.font = f;
-    if (ctx.measureText(text).width <= maxW) return f;
-  }
-  return `${weight} ${minPx}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
-}
-
-async function drawAvatarRounded(ctx, dataUrl, x, y, w, h, r){
-  ctx.save();
-  drawRoundedRect(ctx, x, y, w, h, r);
-  ctx.clip();
-
-  ctx.fillStyle = "rgba(255,255,255,.18)";
-  ctx.fillRect(x,y,w,h);
-
-  if (dataUrl && dataUrl.startsWith("data:")){
-    const img = await loadImage(dataUrl);
-    drawCoverImage(ctx, img, x, y, w, h);
-  }
-  ctx.restore();
-}
-
-function drawCoverImage(ctx, img, x, y, w, h){
-  const sw = img.naturalWidth || img.width;
-  const sh = img.naturalHeight || img.height;
-  if (!sw || !sh) return;
-
-  const s = Math.max(w/sw, h/sh);
-  const dw = sw*s;
-  const dh = sh*s;
-  const dx = x + (w - dw)/2;
-  const dy = y + (h - dh)/2;
-  ctx.drawImage(img, dx, dy, dw, dh);
-}
-
-function drawContainBitmap(ctx, bmp, x, y, w, h){
-  const sw = bmp.width, sh = bmp.height;
-  if (!sw || !sh) return;
-
-  const s = Math.min(w/sw, h/sh);
-  const dw = sw*s;
-  const dh = sh*s;
-  const dx = x + (w - dw)/2;
-  const dy = y + (h - dh)/2;
-  ctx.drawImage(bmp, dx, dy, dw, dh);
-}
-
-function loadImage(src){
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-}
-
-async function loadWebmFrameAsBitmap(src, t=0.05){
-  return new Promise((resolve) => {
-    const v = document.createElement("video");
-    v.muted = true;
-    v.playsInline = true;
-    v.crossOrigin = "anonymous";
-    v.preload = "auto";
-    v.src = src;
-
-    const cleanup = () => {
-      try{ v.pause(); }catch{}
-      v.src = "";
-    };
-
-    v.addEventListener("error", () => { cleanup(); resolve(null); }, { once:true });
-
-    v.addEventListener("loadedmetadata", async () => {
-      try{
-        const tt = Math.min(Math.max(t, 0), Math.max(0.01, (v.duration || 1) - 0.01));
-        v.currentTime = tt;
-
-        v.addEventListener("seeked", async () => {
-          try{
-            const vw = v.videoWidth, vh = v.videoHeight;
-            if (!vw || !vh){ cleanup(); resolve(null); return; }
-
-            const c = document.createElement("canvas");
-            c.width = vw; c.height = vh;
-            c.getContext("2d").drawImage(v, 0, 0, vw, vh);
-
-            const bmp = await createImageBitmap(c);
-            cleanup();
-            resolve(bmp);
-          } catch {
-            cleanup();
-            resolve(null);
-          }
-        }, { once:true });
-
-      } catch {
-        cleanup();
-        resolve(null);
-      }
-    }, { once:true });
-  });
-}
-
-function addNoise(ctx, x, y, w, h, alpha=0.06){
-  const img = ctx.getImageData(x,y,w,h);
-  const d = img.data;
-  for (let i=0; i<d.length; i+=4){
-    const n = (Math.random()*255)|0;
-    d[i]   = d[i]   + (n - 128)*alpha;
-    d[i+1] = d[i+1] + (n - 128)*alpha;
-    d[i+2] = d[i+2] + (n - 128)*alpha;
-  }
-  ctx.putImageData(img, x, y);
-}
+/* === drawQuizResultCard + helpers залишаються твої (без змін) === */
+/* нижче просто залиш як у тебе: drawQuizResultCard, drawRoundedRect, fitText, drawAvatarRounded, loadWebmFrameAsBitmap, addNoise, renderTopProfile ... */
 
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
