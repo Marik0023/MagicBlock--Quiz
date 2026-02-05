@@ -415,7 +415,7 @@ if (mustCreate && !getProfile()){
 }
 
 /* ===== Rewards Modal (Home) ===== */
-function initRewardsModal(){
+(function initRewardsModal(){
   const rewardsBtn = document.getElementById("rewardsBtn");
   const modal = document.getElementById("rewardsModal");
   const closeBtn = document.getElementById("rewardsCloseBtn");
