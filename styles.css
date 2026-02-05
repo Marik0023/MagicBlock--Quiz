@@ -225,10 +225,17 @@ img{max-width:100%; display:block}
 .quizCard__footer{
   margin-top:auto;
   padding-top: 16px;
+
   display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+/* щоб бар був нормальною шириною під кнопкою */
+.quizCard__footer .miniProg{
+  width: 100%;
 }
 
 .badgeDone{
