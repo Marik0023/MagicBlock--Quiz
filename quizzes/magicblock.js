@@ -1,3 +1,7 @@
+// quizzes/magicblock.js
+// Progress UI removed from quiz pages (you said you’ll delete it in HTML).
+// BUT: resume-progress for Home is still saved in localStorage (so Home can show Continue).
+
 const MB_KEYS = {
   profile: "mb_profile",
   doneMagic: "mb_done_magicblock",
@@ -14,60 +18,67 @@ const QUIZ_CARD = {
   idPrefix: "MagicStudent",
 };
 
-function safeJSONParse(v, fallback=null){ try{return JSON.parse(v)}catch{return fallback} }
-function getProfile(){ return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null); }
+function safeJSONParse(v, fallback = null) {
+  try { return JSON.parse(v); } catch { return fallback; }
+}
+function getProfile() {
+  return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
+}
 
-function forcePlayAll(selector){
+function forcePlayAll(selector) {
   const vids = document.querySelectorAll(selector);
   if (!vids.length) return;
-  const tryPlay = () => vids.forEach(v => v.play().catch(()=>{}));
+  const tryPlay = () => vids.forEach(v => v.play().catch(() => {}));
   tryPlay();
-  window.addEventListener("click", tryPlay, { once:true });
-  window.addEventListener("touchstart", tryPlay, { once:true });
+  window.addEventListener("click", tryPlay, { once: true });
+  window.addEventListener("touchstart", tryPlay, { once: true });
 }
 
-function makeSerial(len = 6){
+function makeSerial(len = 6) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
-  for (let i=0;i<len;i++) out += chars[Math.floor(Math.random()*chars.length)];
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
   return out;
 }
-function ensureResultId(prefix, existing){
+function ensureResultId(prefix, existing) {
   if (existing && typeof existing === "string" && existing.startsWith("MB-")) return existing;
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
 /* ===== Progress helpers (MagicBlock)
    We store:
-   - progMagic: answeredCount (0..10)
-   - progMagicState: { idx, correct, answers } where idx = next question index (0..9)
+   - progMagic: answeredCount (0..10)  (answered == idx)
+   - progMagicState: { idx, correct, answers } where idx = next question index (0..10)
 */
-function saveProgressMagic(idx0, correct, answers){
-  const answered = Math.max(0, Math.min(10, idx0)); // idx0 == next question index
+function saveProgressMagic(idx0, correct, answers) {
+  const total = 10;
+  const idxSafe = Math.max(0, Math.min(total, Number(idx0) || 0)); // allow 0..10
+  const answered = idxSafe;
+
   localStorage.setItem(MB_KEYS.progMagic, String(answered));
   localStorage.setItem(MB_KEYS.progMagicState, JSON.stringify({
-    idx: Math.max(0, Math.min(9, idx0)),
+    idx: idxSafe,
     correct: Number.isFinite(correct) ? correct : 0,
     answers: Array.isArray(answers) ? answers : []
   }));
 }
-function loadProgressMagic(){
+function loadProgressMagic() {
   const answered = Number(localStorage.getItem(MB_KEYS.progMagic) || "0");
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMagicState), null);
 
   if (!Number.isFinite(answered) || answered <= 0) return null;
 
-  const idx = Number.isFinite(state?.idx) ? state.idx : answered; // fallback: idx == answered
+  const idx = Number.isFinite(state?.idx) ? state.idx : answered; // fallback
   const correct = Number.isFinite(state?.correct) ? state.correct : 0;
   const answers = Array.isArray(state?.answers) ? state.answers : [];
 
   return {
-    idx: Math.max(0, Math.min(9, idx)),
+    idx: Math.max(0, Math.min(10, idx)),
     correct,
     answers
   };
 }
-function clearProgressMagic(){
+function clearProgressMagic() {
   localStorage.removeItem(MB_KEYS.progMagic);
   localStorage.removeItem(MB_KEYS.progMagicState);
 }
@@ -77,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".brand__logo");
   renderTopProfile();
 
-  // ✅ Put your real questions here
+  // ✅ Replace with your real questions
   const QUESTIONS = [
     { text: "MagicBlock is…", options: ["A", "B", "C", "D"], correctIndex: 0 },
     { text: "MagicBlock helps with…", options: ["A", "B", "C", "D"], correctIndex: 1 },
@@ -95,12 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const resultPanel = document.getElementById("resultPanel");
 
   const qTitle = document.getElementById("qTitle");
-  const progressText = document.getElementById("progressText");
   const questionText = document.getElementById("questionText");
-
-  // ✅ IDs must match magicblock.html
-  const quizProgFill = document.getElementById("quizProgFill");
-  const quizProgPct  = document.getElementById("quizProgPct");
 
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
@@ -115,61 +121,55 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
-  const criticalOk = !!(
-    quizPanel && resultPanel &&
-    qTitle && progressText && questionText &&
-    quizProgFill && quizProgPct &&
-    optionsEl && nextBtn
-  );
-  if (!criticalOk){
+  const criticalOk = !!(quizPanel && resultPanel && qTitle && questionText && optionsEl && nextBtn);
+  if (!criticalOk) {
     console.error("[MagicBlock Quiz] Missing critical DOM nodes. Check IDs in magicblock.html.");
     return;
   }
 
-  let idx = 0; // next question index (0..9)
+  let idx = 0;           // next question index (0..10)
   let correct = 0;
   let selectedIndex = null;
-  let answers = [];
+  let answers = [];      // per question: selected option index
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
   const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
 
-  if (done && saved){
-    if (!saved.id){
+  if (done && saved) {
+    // ensure id
+    if (!saved.id) {
       saved.id = ensureResultId(QUIZ_CARD.idPrefix, saved.id);
       localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(saved));
     }
     clearProgressMagic();
     showResult(saved);
   } else {
+    // restore progress
     const prog = loadProgressMagic();
-    if (prog){
+    if (prog) {
       idx = prog.idx;
       correct = prog.correct;
       answers = prog.answers;
     }
-    renderQuestion();
+
+    // If idx somehow points past end, finish safely
+    if (idx >= QUESTIONS.length) {
+      finishQuiz();
+    } else {
+      renderQuestion();
+      // ensure progress exists even if user closes immediately
+      saveProgressMagic(idx, correct, answers);
+    }
   }
 
   window.addEventListener("beforeunload", () => {
-    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1"){
+    if (localStorage.getItem(MB_KEYS.doneMagic) !== "1") {
       saveProgressMagic(idx, correct, answers);
     }
   });
 
-  function setProgressUI(){
+  function renderQuestion() {
     const total = QUESTIONS.length;
-
-    // ✅ PROGRESS = answered count
-    const answered = idx; // because idx is the next question index
-    progressText.textContent = `Progress: ${answered} / ${total}`;
-
-    const pct = Math.round((answered / total) * 100);
-    quizProgFill.style.width = `${pct}%`;
-    quizProgPct.textContent = `${pct}%`;
-  }
-
-  function renderQuestion(){
     const q = QUESTIONS[idx];
     if (!q) return;
 
@@ -177,36 +177,31 @@ document.addEventListener("DOMContentLoaded", () => {
     nextBtn.disabled = true;
     nextBtn.classList.remove("isShow");
 
-    const total = QUESTIONS.length;
-
-    // Question title shows current question number
     qTitle.textContent = `Question ${idx + 1} of ${total}`;
-
-    // ✅ progress bar + % matches Progress
-    setProgressUI();
-
     questionText.textContent = q.text || "—";
 
     optionsEl.innerHTML = "";
-    (q.options || ["A","B","C","D"]).forEach((label, i) => {
+    (q.options || ["A", "B", "C", "D"]).forEach((label, i) => {
       const btn = document.createElement("button");
       btn.className = "optionBtn";
       btn.type = "button";
-      btn.textContent = `${String.fromCharCode(65+i)}) ${label}`;
+      btn.textContent = `${String.fromCharCode(65 + i)}) ${label}`;
+
       btn.addEventListener("click", () => {
         selectedIndex = i;
         updateSelectedUI();
         nextBtn.disabled = false;
         nextBtn.classList.add("isShow");
       });
+
       optionsEl.appendChild(btn);
     });
 
-    // Save state
+    // Save resume-state when question is shown
     saveProgressMagic(idx, correct, answers);
   }
 
-  function updateSelectedUI(){
+  function updateSelectedUI() {
     [...optionsEl.querySelectorAll(".optionBtn")].forEach((b, i) => {
       b.classList.toggle("isSelected", i === selectedIndex);
     });
@@ -222,12 +217,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     idx++;
 
-    if (idx < QUESTIONS.length){
+    if (idx < QUESTIONS.length) {
       saveProgressMagic(idx, correct, answers);
       renderQuestion();
       return;
     }
 
+    finishQuiz();
+  });
+
+  function finishQuiz() {
     const total = QUESTIONS.length;
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
@@ -247,11 +246,13 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem(MB_KEYS.doneMagic, "1");
     localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(result));
 
+    // ✅ clear quiz-side resume so Home won’t show Continue
     clearProgressMagic();
-    showResult(result);
-  });
 
-  function showResult(result){
+    showResult(result);
+  }
+
+  function showResult(result) {
     quizPanel.style.display = "none";
     resultPanel.style.display = "block";
 
@@ -280,17 +281,17 @@ document.addEventListener("DOMContentLoaded", () => {
     cardZone?.classList.add("isOpen");
     if (dlBtn) dlBtn.disabled = false;
 
-    try{
+    try {
       const prev = exportPreviewDataURL(cardCanvas, 520, 0.85);
       localStorage.setItem(MB_KEYS.prevMagic, prev);
       localStorage.removeItem("mb_png_magicblock");
-    }catch(e){
+    } catch (e) {
       console.warn("MagicBlock preview save failed:", e);
-      try{ localStorage.removeItem(MB_KEYS.prevMagic); }catch{}
+      try { localStorage.removeItem(MB_KEYS.prevMagic); } catch {}
     }
 
     if (genBtn) genBtn.textContent = "Regenerate Result Card";
-    cardZone?.scrollIntoView({ behavior:"smooth", block:"start" });
+    cardZone?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   dlBtn?.addEventListener("click", async () => {
@@ -323,11 +324,11 @@ document.addEventListener("DOMContentLoaded", () => {
 /* =========================
    PREVIEW RESTORE
 ========================= */
-async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn){
+async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn) {
   const prev = localStorage.getItem(previewKey);
   if (!prev || !prev.startsWith("data:image/") || !cardCanvas) return false;
 
-  try{
+  try {
     const img = new Image();
     await new Promise((res, rej) => {
       img.onload = res;
@@ -339,14 +340,14 @@ async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBt
     cardCanvas.height = img.naturalHeight || img.height;
 
     const ctx = cardCanvas.getContext("2d");
-    ctx.clearRect(0,0,cardCanvas.width,cardCanvas.height);
+    ctx.clearRect(0, 0, cardCanvas.width, cardCanvas.height);
     ctx.drawImage(img, 0, 0);
 
     cardZone?.classList.add("isOpen");
     if (dlBtn) dlBtn.disabled = false;
     if (genBtn) genBtn.textContent = "Regenerate Result Card";
     return true;
-  }catch(e){
+  } catch (e) {
     console.warn("restore magicblock preview failed:", e);
     return false;
   }
@@ -371,14 +372,14 @@ function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
 /* =========================
    CANVAS DRAW (MagicBlock)
 ========================= */
-async function drawQuizResultCard(canvas, d){
+async function drawQuizResultCard(canvas, d) {
   const ctx = canvas.getContext("2d");
 
   canvas.width = 1600;
   canvas.height = 900;
 
   const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0,0,W,H);
+  ctx.clearRect(0, 0, W, H);
 
   const card = { x: 0, y: 0, w: W, h: H, r: 96 };
 
@@ -386,11 +387,11 @@ async function drawQuizResultCard(canvas, d){
   ctx.fillStyle = "#BFC0C2";
   ctx.fill();
 
-  const vg = ctx.createRadialGradient(W*0.52, H*0.38, 140, W*0.52, H*0.38, W*0.95);
+  const vg = ctx.createRadialGradient(W * 0.52, H * 0.38, 140, W * 0.52, H * 0.38, W * 0.95);
   vg.addColorStop(0, "rgba(255,255,255,.22)");
   vg.addColorStop(1, "rgba(0,0,0,.12)");
   ctx.fillStyle = vg;
-  ctx.fillRect(0,0,W,H);
+  ctx.fillRect(0, 0, W, H);
 
   addNoise(ctx, 0, 0, W, H, 0.055);
 
@@ -402,9 +403,9 @@ async function drawQuizResultCard(canvas, d){
   if (logoBitmap) drawContainBitmap(ctx, logoBitmap, logoBox.x, logoBox.y, logoBox.w, logoBox.h);
 
   const title = d.title || "How well do you know MagicBlock?";
-  const titleLeft  = logoBox.x + logoBox.w + 70;
+  const titleLeft = logoBox.x + logoBox.w + 70;
   const titleRight = W - padX;
-  const titleMaxW  = Math.max(260, titleRight - titleLeft);
+  const titleMaxW = Math.max(260, titleRight - titleLeft);
 
   const titleY = padTop + 10;
   ctx.fillStyle = "rgba(255,255,255,.92)";
@@ -424,7 +425,7 @@ async function drawQuizResultCard(canvas, d){
   ctx.restore();
 
   const leftColX = avatarBox.x + avatarBox.w + 120;
-  const rightX   = W - padX;
+  const rightX = W - padX;
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -469,7 +470,7 @@ async function drawQuizResultCard(canvas, d){
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "900 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   ctx.textBaseline = "middle";
-  ctx.fillText(d.idText || "MB-MagicStudent-XXXXX", pillX + 30, pillY + pillH/2);
+  ctx.fillText(d.idText || "MB-MagicStudent-XXXXX", pillX + 30, pillY + pillH / 2);
 
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "rgba(0,0,0,.34)";
@@ -480,19 +481,19 @@ async function drawQuizResultCard(canvas, d){
 /* =========================
    CANVAS HELPERS
 ========================= */
-function drawRoundedRect(ctx, x, y, w, h, r){
-  const rr = Math.min(r, w/2, h/2);
+function drawRoundedRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
-  ctx.moveTo(x+rr, y);
-  ctx.arcTo(x+w, y, x+w, y+h, rr);
-  ctx.arcTo(x+w, y+h, x, y+h, rr);
-  ctx.arcTo(x, y+h, x, y, rr);
-  ctx.arcTo(x, y, x+w, y, rr);
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
 }
 
-function fitText(ctx, text, maxPx, minPx, maxW, weight="900"){
-  for (let px=maxPx; px>=minPx; px--){
+function fitText(ctx, text, maxPx, minPx, maxW, weight = "900") {
+  for (let px = maxPx; px >= minPx; px--) {
     const f = `${weight} ${px}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
     ctx.font = f;
     if (ctx.measureText(text).width <= maxW) return f;
@@ -500,47 +501,47 @@ function fitText(ctx, text, maxPx, minPx, maxW, weight="900"){
   return `${weight} ${minPx}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
 }
 
-async function drawAvatarRounded(ctx, dataUrl, x, y, w, h, r){
+async function drawAvatarRounded(ctx, dataUrl, x, y, w, h, r) {
   ctx.save();
   drawRoundedRect(ctx, x, y, w, h, r);
   ctx.clip();
 
   ctx.fillStyle = "rgba(255,255,255,.18)";
-  ctx.fillRect(x,y,w,h);
+  ctx.fillRect(x, y, w, h);
 
-  if (dataUrl && dataUrl.startsWith("data:")){
+  if (dataUrl && dataUrl.startsWith("data:")) {
     const img = await loadImage(dataUrl);
     drawCoverImage(ctx, img, x, y, w, h);
   }
   ctx.restore();
 }
 
-function drawCoverImage(ctx, img, x, y, w, h){
+function drawCoverImage(ctx, img, x, y, w, h) {
   const sw = img.naturalWidth || img.width;
   const sh = img.naturalHeight || img.height;
   if (!sw || !sh) return;
 
-  const s = Math.max(w/sw, h/sh);
-  const dw = sw*s;
-  const dh = sh*s;
-  const dx = x + (w - dw)/2;
-  const dy = y + (h - dh)/2;
+  const s = Math.max(w / sw, h / sh);
+  const dw = sw * s;
+  const dh = sh * s;
+  const dx = x + (w - dw) / 2;
+  const dy = y + (h - dh) / 2;
   ctx.drawImage(img, dx, dy, dw, dh);
 }
 
-function drawContainBitmap(ctx, bmp, x, y, w, h){
+function drawContainBitmap(ctx, bmp, x, y, w, h) {
   const sw = bmp.width, sh = bmp.height;
   if (!sw || !sh) return;
 
-  const s = Math.min(w/sw, h/sh);
-  const dw = sw*s;
-  const dh = sh*s;
-  const dx = x + (w - dw)/2;
-  const dy = y + (h - dh)/2;
+  const s = Math.min(w / sw, h / sh);
+  const dw = sw * s;
+  const dh = sh * s;
+  const dx = x + (w - dw) / 2;
+  const dy = y + (h - dh) / 2;
   ctx.drawImage(bmp, dx, dy, dw, dh);
 }
 
-function loadImage(src){
+function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
@@ -549,7 +550,7 @@ function loadImage(src){
   });
 }
 
-async function loadWebmFrameAsBitmap(src, t=0.05){
+async function loadWebmFrameAsBitmap(src, t = 0.05) {
   return new Promise((resolve) => {
     const v = document.createElement("video");
     v.muted = true;
@@ -559,21 +560,21 @@ async function loadWebmFrameAsBitmap(src, t=0.05){
     v.src = src;
 
     const cleanup = () => {
-      try{ v.pause(); }catch{}
+      try { v.pause(); } catch {}
       v.src = "";
     };
 
-    v.addEventListener("error", () => { cleanup(); resolve(null); }, { once:true });
+    v.addEventListener("error", () => { cleanup(); resolve(null); }, { once: true });
 
-    v.addEventListener("loadedmetadata", async () => {
-      try{
+    v.addEventListener("loadedmetadata", () => {
+      try {
         const tt = Math.min(Math.max(t, 0), Math.max(0.01, (v.duration || 1) - 0.01));
         v.currentTime = tt;
 
         v.addEventListener("seeked", async () => {
-          try{
+          try {
             const vw = v.videoWidth, vh = v.videoHeight;
-            if (!vw || !vh){ cleanup(); resolve(null); return; }
+            if (!vw || !vh) { cleanup(); resolve(null); return; }
 
             const c = document.createElement("canvas");
             c.width = vw; c.height = vh;
@@ -586,24 +587,23 @@ async function loadWebmFrameAsBitmap(src, t=0.05){
             cleanup();
             resolve(null);
           }
-        }, { once:true });
-
+        }, { once: true });
       } catch {
         cleanup();
         resolve(null);
       }
-    }, { once:true });
+    }, { once: true });
   });
 }
 
-function addNoise(ctx, x, y, w, h, alpha=0.06){
-  const img = ctx.getImageData(x,y,w,h);
+function addNoise(ctx, x, y, w, h, alpha = 0.06) {
+  const img = ctx.getImageData(x, y, w, h);
   const d = img.data;
-  for (let i=0; i<d.length; i+=4){
-    const n = (Math.random()*255)|0;
-    d[i]   = d[i]   + (n - 128)*alpha;
-    d[i+1] = d[i+1] + (n - 128)*alpha;
-    d[i+2] = d[i+2] + (n - 128)*alpha;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() * 255) | 0;
+    d[i] = d[i] + (n - 128) * alpha;
+    d[i + 1] = d[i + 1] + (n - 128) * alpha;
+    d[i + 2] = d[i + 2] + (n - 128) * alpha;
   }
   ctx.putImageData(img, x, y);
 }
@@ -611,7 +611,7 @@ function addNoise(ctx, x, y, w, h, alpha=0.06){
 /* =========================
    TOP PROFILE PILL
 ========================= */
-function renderTopProfile(){
+function renderTopProfile() {
   const pill = document.getElementById("profilePill");
   if (!pill) return;
 
@@ -620,7 +620,7 @@ function renderTopProfile(){
   const hintEl = pill.querySelector("[data-profile-hint]");
 
   const p = safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
-  if (!p){
+  if (!p) {
     if (img) img.src = "";
     if (nameEl) nameEl.textContent = "No profile";
     if (hintEl) hintEl.textContent = "Go Home";
