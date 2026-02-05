@@ -293,14 +293,16 @@ function updateMiniProgressUI(){
       return;
     }
 
-    // show only if >= 1
-    const prog = getProgNum(keys.progKey);
-    if (prog < 1){
+    // prog = next question number (1..10). Show ONLY if user already answered >=1 => prog >= 2
+    const nextQ = getProgNum(keys.progKey);
+    if (nextQ < 2){
       wrap.style.display = "none";
       return;
     }
 
-    const pct = Math.round((prog / total) * 100);
+    const answered = Math.min(total, Math.max(0, nextQ - 1)); // 2 -> 1 answered
+    const pct = Math.round((answered / total) * 100);
+
     wrap.style.display = "flex";
 
     const fill = wrap.querySelector(".miniProg__fill");
@@ -345,8 +347,8 @@ function updateBadges(){
       return;
     }
 
-    const p = getProgNum(keys.progKey);
-    btn.textContent = (p >= 1) ? "Continue" : "Start";
+    const nextQ = getProgNum(keys.progKey);
+    btn.textContent = (nextQ >= 2) ? "Continue" : "Start";
   });
 
   const champ = document.getElementById("championWrap");
