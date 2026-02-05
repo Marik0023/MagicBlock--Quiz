@@ -3,6 +3,7 @@ const MB_KEYS = {
   doneSong: "mb_done_song",
   resSong: "mb_result_song",
   prevSong: "mb_prev_song",
+  progSong: "mb_prog_song",
 };
 
 const QUIZ_CARD = {
@@ -70,6 +71,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const rAcc = document.getElementById("rAcc");
 
   const genBtn = document.getElementById("genBtn");
+  const progressNotice = document.getElementById("progressNotice");
+  const progressTextNote = document.getElementById("progressTextNote");
+  const restartProgressBtn = document.getElementById("restartProgressBtn");
   const cardZone = document.getElementById("cardZone");
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
@@ -83,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let idx = 0;
   let correct = 0;
   let selectedIndex = null;
+  let answers = [];
 
   playBtn?.addEventListener("click", async () => {
     try{
@@ -125,6 +130,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
   const done = localStorage.getItem(MB_KEYS.doneSong) === "1";
+  const prog = safeJSONParse(localStorage.getItem(MB_KEYS.progSong), null);
+
+  if (restartProgressBtn){
+    restartProgressBtn.addEventListener("click", () => {
+      try{ localStorage.removeItem(MB_KEYS.progSong); }catch{}
+      location.reload();
+    });
+  }
 
   if (done && saved){
     if (!saved.id){
@@ -133,6 +146,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     showResult(saved);
   } else {
+    // ✅ Restore in-progress attempt (if user closed the tab mid-quiz)
+    if (prog && typeof prog.idx === "number" && prog.idx > 0 && prog.idx < QUESTIONS.length){
+      idx = Math.floor(prog.idx);
+      correct = Math.max(0, Math.floor(prog.correct || 0));
+      answers = Array.isArray(prog.answers) ? prog.answers : [];
+      if (progressNotice){
+        progressNotice.style.display = "flex";
+        if (progressTextNote) progressTextNote.textContent = `Progress restored — continue from Q${idx + 1} / ${QUESTIONS.length}`;
+      }
+    }
     renderQuestion();
   }
 
@@ -176,13 +199,30 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function saveProgress(){
+    try{
+      localStorage.setItem(MB_KEYS.progSong, JSON.stringify({ idx, correct, answers, ts: Date.now() }));
+    }catch(e){
+      // if quota full, drop progress silently
+      try{ localStorage.removeItem(MB_KEYS.progSong); }catch{}
+    }
+  }
+
   nextBtn.addEventListener("click", () => {
     if (selectedIndex === null) return;
 
     const q = QUESTIONS[idx];
+    // store per-question answer (for review)
+    answers[idx] = {
+      q: `Question ${idx + 1}`,
+      options: q.options,
+      selected: selectedIndex,
+      correct: q.correctIndex
+    };
     if (selectedIndex === q.correctIndex) correct++;
 
     idx++;
+    saveProgress();
     if (idx < QUESTIONS.length){
       renderQuestion();
       return;
@@ -214,6 +254,47 @@ document.addEventListener("DOMContentLoaded", () => {
     rTotal && (rTotal.textContent = String(result.total));
     rCorrect && (rCorrect.textContent = String(result.correct));
     rAcc && (rAcc.textContent = `${result.acc}%`);
+
+    // ✅ Question review
+    const reviewWrap = document.getElementById("reviewWrap");
+    const reviewList = document.getElementById("reviewList");
+    if (reviewWrap && reviewList && Array.isArray(result.answers)){
+      reviewWrap.style.display = "block";
+      renderReviewList(reviewList, result.answers);
+    }
+  }
+
+  function renderReviewList(container, list){
+    container.innerHTML = "";
+    list.forEach((a, i) => {
+      if (!a) return;
+      const ok = a.selected === a.correct;
+      const qTitle = a.q || `Question ${i + 1}`;
+      const selText = (a.options && a.options[a.selected]) ? a.options[a.selected] : "—";
+      const corText = (a.options && a.options[a.correct]) ? a.options[a.correct] : "—";
+      const el = document.createElement("div");
+      el.className = "reviewItem";
+      el.innerHTML = `
+        <div class="reviewItem__head">
+          <div>${qTitle}</div>
+          <div class="${ok ? "reviewBadgeOk" : "reviewBadgeNo"}">${ok ? "✅" : "❌"}</div>
+        </div>
+        <div class="reviewItem__meta">
+          <div><b>Your answer:</b> ${escapeHtml(selText)}</div>
+          <div><b>Correct:</b> ${escapeHtml(corText)}</div>
+        </div>
+      `;
+      container.appendChild(el);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll("\"","&quot;")
+      .replaceAll("\'","&#39;");
   }
 
   genBtn?.addEventListener("click", async () => {
