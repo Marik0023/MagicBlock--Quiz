@@ -405,7 +405,7 @@ function updateFooterHint(isChampionUnlocked) {
     el.style.display = "none"; // hide completely
   } else {
     el.style.display = "";
-    el.textContent = "Complete all quizzes — a nice bonus is waiting for you 😉";
+    el.textContent = "Complete all 3 quizzes to unlock an exclusive bonus ✨";
   }
 }
 
