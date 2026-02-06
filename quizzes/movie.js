@@ -1,5 +1,3 @@
-// quizzes/movie.js
-
 const MB_KEYS = {
   profile: "mb_profile",
   doneMovie: "mb_done_movie",
@@ -9,7 +7,8 @@ const MB_KEYS = {
   progMovie: "mb_prog_movie",            // number (1..10)
   progMovieState: "mb_prog_movie_state", // JSON { idx, correct, answers }
 
-  reviewHiddenMovie: "mb_review_hidden_movie", // "1" після Generate
+  // ✅ Answer Review: hide forever after Generate
+  reviewHiddenMovie: "mb_review_hidden_movie",
 };
 
 function safeJSONParse(v, fallback = null) {
@@ -30,12 +29,14 @@ function forcePlayAll(selector) {
 
 /* ===== Progress helpers (Movie) ===== */
 function saveProgressMovie(idx0, correct, answers) {
-  const qNum = Math.max(1, Math.min(10, (idx0 + 1)));
+  const idx = Math.max(0, Math.min(9, Number(idx0) || 0));
+  const qNum = Math.max(1, Math.min(10, idx + 1));
+
   localStorage.setItem(MB_KEYS.progMovie, String(qNum));
   localStorage.setItem(
     MB_KEYS.progMovieState,
     JSON.stringify({
-      idx: idx0,
+      idx,
       correct: Number.isFinite(correct) ? correct : 0,
       answers: Array.isArray(answers) ? answers : [],
     })
@@ -46,18 +47,13 @@ function loadProgressMovie() {
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMovieState), null);
   if (!Number.isFinite(n) || n <= 0) return null;
 
-  const idx = state?.idx;
-  const correct = state?.correct;
-  const answers = state?.answers;
-
-  if (!Number.isFinite(idx)) {
-    return { idx: Math.max(0, Math.min(9, n - 1)), correct: 0, answers: [] };
-  }
+  const fallbackIdx = Math.max(0, Math.min(9, n - 1));
+  const idx = Number.isFinite(state?.idx) ? state.idx : fallbackIdx;
 
   return {
     idx: Math.max(0, Math.min(9, idx)),
-    correct: Number.isFinite(correct) ? correct : 0,
-    answers: Array.isArray(answers) ? answers : [],
+    correct: Number.isFinite(state?.correct) ? state.correct : 0,
+    answers: Array.isArray(state?.answers) ? state.answers : [],
   };
 }
 function clearProgressMovie() {
@@ -69,6 +65,30 @@ function clearProgressMovie() {
 function buildId(prefix) {
   const serial = Math.random().toString(36).slice(2, 7).toUpperCase();
   return `MB-${prefix}-${serial}`;
+}
+
+/* ===== Top profile ===== */
+function renderTopProfile() {
+  const pill = document.getElementById("profilePill");
+  if (!pill) return;
+
+  const img = pill.querySelector("img");
+  const nameEl = pill.querySelector("[data-profile-name]");
+  const hintEl = pill.querySelector("[data-profile-hint]");
+  const p = safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
+
+  if (!p) {
+    if (img) img.src = "";
+    if (nameEl) nameEl.textContent = "No profile";
+    if (hintEl) hintEl.textContent = "Go Home";
+    pill.addEventListener("click", () => location.href = "../index.html");
+    return;
+  }
+
+  if (img) img.src = p.avatar || "";
+  if (nameEl) nameEl.textContent = p.name || "Player";
+  if (hintEl) hintEl.textContent = "Edit on Home";
+  pill.addEventListener("click", () => location.href = "../index.html");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -108,6 +128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
+  // ✅ review elements
   const reviewBox = document.getElementById("reviewBox");
   const reviewList = document.getElementById("reviewList");
 
@@ -185,28 +206,49 @@ document.addEventListener("DOMContentLoaded", () => {
   frameVideo.addEventListener("pause", () => showOverlay());
   frameVideo.addEventListener("ended", () => showOverlay());
 
-  // ===== Answer Review render =====
+  // ===== Review helpers =====
+  function showReview() {
+    if (!reviewBox) return;
+    reviewBox.style.display = "block";
+    reviewBox.classList.remove("isHidden");
+    reviewBox.classList.remove("isGone");
+  }
+
+  function hideReviewAnimatedForever() {
+    localStorage.setItem(MB_KEYS.reviewHiddenMovie, "1");
+
+    if (!reviewBox) return;
+    reviewBox.classList.add("isHidden");
+
+    window.setTimeout(() => {
+      reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
+    }, 220);
+  }
+
   function renderAnswerReviewMovie() {
     if (!reviewBox || !reviewList) return;
 
-    // якщо вже генерили — review не показуємо
-    if (localStorage.getItem(MB_KEYS.reviewHiddenMovie) === "1") {
+    const hidden = localStorage.getItem(MB_KEYS.reviewHiddenMovie) === "1";
+    if (hidden) {
       reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
       return;
     }
+
+    const QUESTION_TEXT = "Which movie is shown in this frame?";
 
     reviewList.innerHTML = "";
 
     QUESTIONS.forEach((q, i) => {
       const correctLabel = q.options?.[q.correctIndex] ?? "—";
-      // const questionText = "Which movie is shown in this frame?";
 
       const item = document.createElement("div");
       item.className = "reviewItem";
 
       const qEl = document.createElement("div");
       qEl.className = "reviewQ";
-      qEl.textContent = `Question ${i + 1}`;
+      qEl.textContent = `QUESTION ${i + 1}`;
 
       const right = document.createElement("div");
 
@@ -216,7 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const hint = document.createElement("div");
       hint.className = "reviewHint";
-      hint.textContent = questionText;
+      hint.textContent = QUESTION_TEXT;
 
       right.appendChild(aEl);
       right.appendChild(hint);
@@ -226,7 +268,7 @@ document.addEventListener("DOMContentLoaded", () => {
       reviewList.appendChild(item);
     });
 
-    reviewBox.classList.remove("isHidden", "isGone");
+    showReview();
   }
 
   // ===== Init state =====
@@ -258,13 +300,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const q = QUESTIONS[idx];
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
 
-    // VIDEO init
     frameVideo.pause();
     frameVideo.muted = true;
 
     frameVideo.src = q.frame;
     frameVideo.load();
-
     showOverlay();
 
     const onMeta = () => {
@@ -344,12 +384,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   genBtn?.addEventListener("click", async () => {
-    // Hide review назавжди
-    if (reviewBox && !reviewBox.classList.contains("isGone")) {
-      reviewBox.classList.add("isHidden");
-      setTimeout(() => reviewBox.classList.add("isGone"), 220);
-    }
-    localStorage.setItem(MB_KEYS.reviewHiddenMovie, "1");
+    // ✅ hide review forever
+    hideReviewAnimatedForever();
 
     const p = getProfile();
     const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
@@ -409,30 +445,6 @@ document.addEventListener("DOMContentLoaded", () => {
   restoreQuizPreview(MB_KEYS.prevMovie, cardCanvas, cardZone, dlBtn, genBtn);
 });
 
-/* ===== Top profile ===== */
-function renderTopProfile() {
-  const pill = document.getElementById("profilePill");
-  if (!pill) return;
-
-  const img = pill.querySelector("img");
-  const nameEl = pill.querySelector("[data-profile-name]");
-  const hintEl = pill.querySelector("[data-profile-hint]");
-  const p = safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
-
-  if (!p) {
-    if (img) img.src = "";
-    if (nameEl) nameEl.textContent = "No profile";
-    if (hintEl) hintEl.textContent = "Go Home";
-    pill.addEventListener("click", () => location.href = "../index.html");
-    return;
-  }
-
-  if (img) img.src = p.avatar || "";
-  if (nameEl) nameEl.textContent = p.name || "Player";
-  if (hintEl) hintEl.textContent = "Edit on Home";
-  pill.addEventListener("click", () => location.href = "../index.html");
-}
-
 /* ===== preview helpers + canvas helpers (unchanged) ===== */
 async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn) {
   const prev = localStorage.getItem(previewKey);
@@ -475,7 +487,6 @@ function exportPreviewDataURL(srcCanvas, maxW = 520, quality = 0.85) {
 
   const ctx = t.getContext("2d");
   ctx.drawImage(srcCanvas, 0, 0, tw, th);
-
   return t.toDataURL("image/jpeg", quality);
 }
 
