@@ -131,6 +131,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const audio = document.getElementById("audio");
   const playBtn = document.getElementById("playBtn");
   const seekBar = document.getElementById("seekBar");
+  const volBar = document.getElementById("volBar");
+  const volIcon = document.getElementById("volIcon");
   const playerTime = document.getElementById("playerTime");
   const vinyl = document.getElementById("vinyl");
 
@@ -150,8 +152,50 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // ===== Volume =====
+  let lastVol = 0.8;                 // пам'ять гучності для mute/unmute
+  audio.volume = lastVol;
+  
+  if (volBar) {
+    volBar.value = String(Math.round(lastVol * 100));
+  
+    volBar.addEventListener("input", () => {
+      const v = Math.max(0, Math.min(1, Number(volBar.value) / 100));
+      audio.volume = v;
+      audio.muted = (v === 0);
+      if (v > 0) lastVol = v;
+      updateVolIcon();
+    });
+  }
+  
+  if (volIcon) {
+    volIcon.addEventListener("click", () => {
+      if (audio.muted || audio.volume === 0) {
+        audio.muted = false;
+        audio.volume = lastVol || 0.8;
+        if (volBar) volBar.value = String(Math.round(audio.volume * 100));
+      } else {
+        audio.muted = true;
+        if (audio.volume > 0) lastVol = audio.volume;
+      }
+      updateVolIcon();
+    });
+  }
+  
+  function updateVolIcon() {
+    if (!volIcon) return;
+    const v = audio.muted ? 0 : audio.volume;
+  
+    // прості іконки (без svg)
+    if (v === 0) volIcon.textContent = "🔇";
+    else if (v < 0.5) volIcon.textContent = "🔈";
+    else volIcon.textContent = "🔊";
+  }
+  
+  updateVolIcon();
+
   // 🔧 тут регулюєш “скільки обертів за весь трек”
-  const TURNS_PER_TRACK = 10; // 8/10/12 — вибери як подобається
+  const TURNS_PER_TRACK = 7; // 8/10/12 — вибери як подобається
 
   // --- smooth clock: робить rotation плавним, навіть якщо audio.currentTime оновлюється ривками ---
   const smooth = { running: false, baseT: 0, baseP: 0 };
