@@ -1194,3 +1194,18 @@ body.mbQuiz .cardActions{
 .mbQuiz .videoPlayBtn:active img{
   transform: translateZ(0) scale(0.98);
 }
+
+/* ===== Song quiz: center (player + answers) vertically inside panel ===== */
+.mbQuiz #quizPanel .quizLayout{
+  align-items: center;              /* головне: вертикально по центру */
+}
+
+/* прибираємо “фейковий” заголовок справа, який зсуває варіанти вниз */
+.mbQuiz #quizPanel .ghostTitle{
+  display: none;
+}
+
+/* щоб права колонка не мала зайвого top-space */
+.mbQuiz #quizPanel .quizLayout > div:last-child{
+  margin-top: 0;
+}
