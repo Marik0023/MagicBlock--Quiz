@@ -1047,27 +1047,17 @@ body.mbQuiz .cardActions{
   color: rgba(255,255,255,.80);
 }
 
-/* ===== VINYL: spin + seek rotation (Song quiz) ===== */
+/* ===== VINYL (Song quiz) — smooth via JS (no CSS animation) ===== */
 .vinyl{
-  width: 140px;
-  height: 140px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   border-radius: 999px;
   display: block;
 
-  transform: rotate(calc(var(--seek-rot, 0deg)));
+  transform: rotate(0deg);
   transform-origin: 50% 50%;
-  transition: transform .08s linear;
+  will-change: transform;
 
   filter: drop-shadow(0 16px 30px rgba(0,0,0,.55));
-  will-change: transform;
-}
-
-.vinyl.isSpinning{
-  animation: vinylSpin 1.35s linear infinite;
-}
-
-@keyframes vinylSpin{
-  from { transform: rotate(calc(var(--seek-rot, 0deg))); }
-  to   { transform: rotate(calc(var(--seek-rot, 0deg) + 360deg)); }
 }
