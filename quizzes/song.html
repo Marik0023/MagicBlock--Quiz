@@ -51,8 +51,11 @@
 
           <div class="mbPlayer">
             <div class="mbPlayer__row">
-              <!-- ✅ Диск ЗАМІСТЬ фоторамки -->
+              <!-- cover (we show vinyl here) -->
               <div class="mbPlayer__cover">
+                <!-- якщо цей img не потрібен — можеш лишити, але він не заважає -->
+                <img id="playerCover" src="../assets/covers/placeholder.jpg" alt="" />
+                <!-- вініл (зараз він у cover) -->
                 <img id="vinyl" class="vinyl" src="../assets/vinilmb.png" alt="Vinyl" />
               </div>
 
@@ -65,8 +68,10 @@
             </div>
 
             <div class="mbPlayer__bar">
+              <!-- seek -->
               <input class="range" id="seekBar" type="range" min="0" max="100" value="0" />
-              <input class="range vol__range" id="volBar" type="range" min="0" max="100" value="80" />
+              <!-- volume (без mute кнопки) -->
+              <input class="range range--vol vol__range" id="volBar" type="range" min="0" max="100" value="80" />
             </div>
           </div>
 
