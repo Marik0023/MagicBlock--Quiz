@@ -1,4 +1,4 @@
-:root{
+  :root{
   --bg: #06070b;
   --panel: rgba(10,12,16,.68);
   --panel2: rgba(10,12,16,.52);
@@ -1213,4 +1213,69 @@ body.mbQuiz .cardActions{
 /* qTitle зверху зліва (коли ти виніс його над quizLayout) */
 .mbQuiz #quizPanel .questionTitle--top{
   margin: 0 0 14px 0;
+}
+
+/* ===== Answer Review (Result panel) ===== */
+.mbQuiz .reviewBox{
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.18);
+  border-radius: 18px;
+  padding: 14px 14px 12px;
+}
+
+.mbQuiz .reviewBox h3{
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: .2px;
+  color: rgba(255,255,255,.92);
+}
+
+.mbQuiz .reviewList{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* один рядок відповіді */
+.mbQuiz .reviewItem{
+  display: grid;
+  grid-template-columns: 86px 1fr;
+  gap: 12px;
+  align-items: start;
+
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+}
+
+.mbQuiz .reviewQ{
+  font-weight: 900;
+  font-size: 12px;
+  color: rgba(255,255,255,.70);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding-top: 2px;
+}
+
+.mbQuiz .reviewA{
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.35;
+  color: rgba(255,255,255,.92);
+}
+
+/* маленька підказка (опціонально) */
+.mbQuiz .reviewHint{
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255,255,255,.62);
+}
+
+/* плавне зникання (ми будемо просто додавати клас у JS) */
+.mbQuiz .reviewBox.isHidden{
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
 }
