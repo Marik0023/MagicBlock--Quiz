@@ -1091,11 +1091,12 @@ body.mbQuiz .cardActions{
   min-width: 0;
 }
 
-.mbQuiz .mbQuiz .vol__range,
-.mbQuiz #volBar.vol__range{
-  width: 120px;
+/* volume right side */
+.mbQuiz .mbPlayer__bar .vol__range{
+  width: 120px;             
   flex: 0 0 auto;
 
   padding-left: 12px;
   border-left: 1px solid rgba(255,255,255,.12);
+  opacity: .92;
 }
