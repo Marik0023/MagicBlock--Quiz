@@ -1049,9 +1049,14 @@ body.mbQuiz .cardActions{
 
 /* ===== VINYL (Song quiz) — smooth via JS (no CSS animation) ===== */
 .mbQuiz .mbPlayer__cover{
+  width: 112px;   
+  height: 112px;
+  flex: 0 0 112px;
+
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
+  border-radius: 999px;
 }
 
 /* сам диск */
