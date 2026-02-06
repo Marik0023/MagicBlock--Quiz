@@ -91,16 +91,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ Put your real questions here
   const QUESTIONS = [
-    { text: "MagicBlock is…", options: ["A", "B", "C", "D"], correctIndex: 0 },
-    { text: "MagicBlock helps with…", options: ["A", "B", "C", "D"], correctIndex: 1 },
-    { text: "MagicBlock is built for…", options: ["A", "B", "C", "D"], correctIndex: 2 },
-    { text: "MagicBlock main focus is…", options: ["A", "B", "C", "D"], correctIndex: 3 },
-    { text: "Question 5", options: ["A", "B", "C", "D"], correctIndex: 0 },
-    { text: "Question 6", options: ["A", "B", "C", "D"], correctIndex: 1 },
-    { text: "Question 7", options: ["A", "B", "C", "D"], correctIndex: 2 },
-    { text: "Question 8", options: ["A", "B", "C", "D"], correctIndex: 3 },
-    { text: "Question 9", options: ["A", "B", "C", "D"], correctIndex: 0 },
-    { text: "Question 10", options: ["A", "B", "C", "D"], correctIndex: 1 },
+    { text: "What does MagicBlock use to scale fully on-chain apps without fragmenting state?", options: ["Ephemeral Rollups (ERs)", "Centralized sequencers", "Cross-chain bridges", "A new L1 built from scratch"], correctIndex: 0 },
+    { text: "What is MagicBlock?", options: ["A custodial wallet", "A real-time engine integrated with Solana", "A proof-of-work chain", "A centralized exchange"], correctIndex: 1 },
+    { text: "What is the core idea behind MagicBlock Ephemeral Rollups?", options: ["A bridge-based L2 that settles weekly", "App-specific SVM runtimes that can run at high speed on demand", "A new proof-of-work network for Solana", "A centralized database that mirrors Solana"], correctIndex: 1 },
+    { text: "Which problem does MagicBlock aim to avoid while scaling apps?", options: ["Token inflation", "Validator slashing", "NFT royalties", "State fragmentation"], correctIndex: 3 },
+    { text: "What does MagicBlock claim ERs achieve without giving up?", options: ["Privacy without any trust assumptions", "Finality without validators", "Scalability without compromising composability", "Throughput without running code"], correctIndex: 2 },
+    { text: "On what date did the MagicBlock presale start?", options: ["February 5 [2026]", "February 1 [2026]", "February 5 [2025]", "Will start on March 5"], correctIndex: 0 },
+    { text: "Why does MagicBlock argue “custom chain” approaches can hurt DePIN projects?", options: ["They remove smart contracts", "They make Solana unusable", "They fragment liquidity and add complexity", "They require proof-of-work mining"], correctIndex: 2 },
+    { text: "What does MagicBlock claim “on-chain coordination” improves for infrastructure networks?", options: ["Trust, because actions are verifiable and tamper-proof on Solana", "It reduces hardware costs to zero", "It guarantees anonymity for all participants", "It eliminates the need for tokens"], correctIndex: 0 },
+    { text: "What does MagicBlock call its privacy-enabled rollup design?", options: [" Private Execution Chain (PEC)", "Encrypted Settlement Layer (ESL)", "Confidential Sidechain Runtime (CSR)", "Private Ephemeral Rollup (PER)"], correctIndex: 3 },
+    { text: "What is the total supply of the $BLOCK token?", options: ["1,000,000,000", "100,000,000,000", "10,000,000,000", "5,000,000,000"], correctIndex: 1 },
   ];
 
   const quizPanel = document.getElementById("quizPanel");
