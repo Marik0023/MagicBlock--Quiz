@@ -182,21 +182,30 @@ document.addEventListener("DOMContentLoaded", () => {
       savedRes.id = ensureResultId(QUIZ_CARD.idPrefix, savedRes.id);
       localStorage.setItem(MB_KEYS.resMagic, JSON.stringify(savedRes));
     }
+  
     clearProgressMagic();
     showResult(savedRes);
+  
+    // ✅ важливо: preview відновлюємо, але НЕ виходимо зі скрипта
     restoreQuizPreview(MB_KEYS.prevMagic, cardCanvas, cardZone, dlBtn, genBtn);
-    return;
+  
+  } else {
+    const prog = loadProgressMagic();
+    if (prog) {
+      idx = prog.idx;
+      correct = prog.correct;
+      answers = prog.answers;
+    }
+  
+    saveProgressMagic(idx, correct, answers);
+    renderQuestion();
+  
+    window.addEventListener("beforeunload", () => {
+      if (localStorage.getItem(MB_KEYS.doneMagic) !== "1") {
+        saveProgressMagic(idx, correct, answers);
+      }
+    });
   }
-
-  const prog = loadProgressMagic();
-  if (prog) {
-    idx = prog.idx;
-    correct = prog.correct;
-    answers = prog.answers;
-  }
-
-  saveProgressMagic(idx, correct, answers);
-  renderQuestion();
 
   window.addEventListener("beforeunload", () => {
     if (localStorage.getItem(MB_KEYS.doneMagic) !== "1") {
