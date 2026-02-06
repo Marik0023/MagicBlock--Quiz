@@ -236,8 +236,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const QUESTION_TEXT = "Which movie is shown in this frame?";
-
     reviewList.innerHTML = "";
 
     QUESTIONS.forEach((q, i) => {
@@ -256,12 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
       aEl.className = "reviewA";
       aEl.textContent = correctLabel;
 
-      const hint = document.createElement("div");
-      hint.className = "reviewHint";
-      hint.textContent = QUESTION_TEXT;
-
       right.appendChild(aEl);
-      right.appendChild(hint);
 
       item.appendChild(qEl);
       item.appendChild(right);
