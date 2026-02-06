@@ -43,23 +43,20 @@
 
     <!-- QUIZ -->
     <section id="quizPanel" class="panel">
+      <!-- ✅ qTitle stays top-left -->
+      <div class="questionTitle questionTitle--top" id="qTitle">Question 1 of 10</div>
+
       <div class="quizLayout">
         <!-- LEFT -->
         <div>
-          <div class="questionTitle" id="qTitle">Question 1 of 10</div>
-
           <div class="mbPlayer" style="padding:12px;">
             <div class="mbVideoWrap">
-              <video
-                id="frameVideo"
-                playsinline
-                preload="metadata"
-              >
+              <video id="frameVideo" playsinline preload="metadata">
                 <source id="frameSource" src="../assets/movies/1.mp4" type="video/mp4" />
               </video>
 
               <!-- Custom play overlay -->
-              <button id="videoPlayBtn" class="videoPlayBtn" type="button" aria-label="Play video">
+              <button id="videoPlayBtn" class="videoPlayBtn" type="button" aria-label="Play / Pause video">
                 <img src="../assets/customplay.png" alt="Play" />
               </button>
             </div>
@@ -68,7 +65,7 @@
 
         <!-- RIGHT -->
         <div>
-          <div class="questionTitle ghostTitle"></div>
+          <!-- ❌ ghostTitle прибрали (він тільки зсував варіанти) -->
           <div class="options" id="options"></div>
 
           <div class="nextWrap">
