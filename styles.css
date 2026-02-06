@@ -1197,7 +1197,7 @@ body.mbQuiz .cardActions{
 
 /* ===== Song quiz: center (player + answers) vertically inside panel ===== */
 .mbQuiz #quizPanel .quizLayout{
-  align-items: center;              /* головне: вертикально по центру */
+  align-items: center; /* вертикально по центру */
 }
 
 /* прибираємо “фейковий” заголовок справа, який зсуває варіанти вниз */
@@ -1205,17 +1205,12 @@ body.mbQuiz .cardActions{
   display: none;
 }
 
-/* щоб права колонка не мала зайвого top-space */
+/* щоб права колонка не мала зайвого top-space (на всякий) */
 .mbQuiz #quizPanel .quizLayout > div:last-child{
   margin-top: 0;
 }
 
-/* Song quiz: qTitle always top-left, layout centered */
+/* qTitle зверху зліва (коли ти виніс його над quizLayout) */
 .mbQuiz #quizPanel .questionTitle--top{
-  margin: 0 0 14px 0;   /* відступ вниз перед блоком */
-}
-
-/* залишаємо центрування тільки для двох колонок */
-.mbQuiz #quizPanel .quizLayout{
-  align-items: center;
+  margin: 0 0 14px 0;
 }
