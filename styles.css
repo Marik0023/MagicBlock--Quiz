@@ -1209,3 +1209,13 @@ body.mbQuiz .cardActions{
 .mbQuiz #quizPanel .quizLayout > div:last-child{
   margin-top: 0;
 }
+
+/* Song quiz: qTitle always top-left, layout centered */
+.mbQuiz #quizPanel .questionTitle--top{
+  margin: 0 0 14px 0;   /* відступ вниз перед блоком */
+}
+
+/* залишаємо центрування тільки для двох колонок */
+.mbQuiz #quizPanel .quizLayout{
+  align-items: center;
+}
