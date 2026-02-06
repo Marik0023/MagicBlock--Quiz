@@ -1,5 +1,8 @@
+// quizzes/song.js
+
 const MB_KEYS = {
   profile: "mb_profile",
+
   doneSong: "mb_done_song",
   resSong: "mb_result_song",
   prevSong: "mb_prev_song",
@@ -7,6 +10,9 @@ const MB_KEYS = {
   // HOME progress
   progSong: "mb_prog_song",
   progSongState: "mb_prog_song_state", // JSON { idx, correct, answers }
+
+  // ✅ Answer Review: hide forever after Generate
+  reviewSongHidden: "mb_review_song_hidden",
 };
 
 const QUIZ_CARD = {
@@ -139,15 +145,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const genBtn = document.getElementById("genBtn");
   const cardZone = document.getElementById("cardZone");
-  const reviewBox = document.getElementById("reviewBox");
-  const reviewList = document.getElementById("reviewList");
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
-  const criticalOk = !!(
-    quizPanel && qTitle && optionsEl && nextBtn &&
-    audio && playBtn && seekBar && playerTime && vinyl
-  );
+  // ✅ review elements
+  const reviewBox = document.getElementById("reviewBox");
+  const reviewList = document.getElementById("reviewList");
+
+  const criticalOk = !!(quizPanel && qTitle && optionsEl && nextBtn && audio && playBtn && seekBar && playerTime && vinyl);
   if (!criticalOk) {
     console.error("[Song Quiz] Missing critical DOM nodes. Check IDs in song.html.");
     return;
@@ -163,7 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 🔧 скільки обертів за весь трек
+  // how many turns for whole track
   const TURNS_PER_TRACK = 7;
 
   // --- smooth clock ---
@@ -239,23 +244,34 @@ document.addEventListener("DOMContentLoaded", () => {
   // ---------- REVIEW helpers ----------
   function showReview() {
     if (!reviewBox) return;
+    reviewBox.style.display = "block";
     reviewBox.classList.remove("isHidden");
     reviewBox.classList.remove("isGone");
-    reviewBox.style.display = "block";
   }
 
-  function hideReviewAnimated() {
+  function hideReviewAnimatedForever() {
+    // ✅ persist forever
+    localStorage.setItem(MB_KEYS.reviewSongHidden, "1");
+
     if (!reviewBox) return;
+
     reviewBox.classList.add("isHidden");
-    // після transition прибираємо місце
-    setTimeout(() => {
-      if (!reviewBox) return;
+
+    window.setTimeout(() => {
       reviewBox.classList.add("isGone");
-    }, 180);
+      reviewBox.style.display = "none";
+    }, 220);
   }
 
   function renderAnswerReviewSong() {
     if (!reviewBox || !reviewList) return;
+
+    const hidden = localStorage.getItem(MB_KEYS.reviewSongHidden) === "1";
+    if (hidden) {
+      reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
+      return;
+    }
 
     reviewList.innerHTML = "";
 
@@ -267,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const qEl = document.createElement("div");
       qEl.className = "reviewQ";
-      qEl.textContent = `Q ${i + 1}`;
+      qEl.textContent = `Question ${i + 1} of ${QUESTIONS.length}`;
 
       const aEl = document.createElement("div");
       aEl.className = "reviewA";
@@ -291,6 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const done = localStorage.getItem(MB_KEYS.doneSong) === "1";
 
   if (done && savedRes) {
+    // ensure id stable
     if (!savedRes.id) {
       savedRes.id = ensureResultId(QUIZ_CARD.idPrefix, savedRes.id);
       localStorage.setItem(MB_KEYS.resSong, JSON.stringify(savedRes));
@@ -439,14 +456,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
 
-    const latestSaved = safeJSONParse(localStorage.getItem(MB_KEYS.resSong), null);
-
     const result = {
       total,
       correct,
       acc,
       name: p?.name || "Player",
-      id: ensureResultId(QUIZ_CARD.idPrefix, latestSaved?.id || null),
+      id: ensureResultId(QUIZ_CARD.idPrefix, savedRes?.id || null),
       ts: Date.now(),
     };
 
@@ -466,13 +481,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (rCorrect) rCorrect.textContent = String(result.correct);
     if (rAcc) rAcc.textContent = `${result.acc}%`;
 
-    // ✅ показуємо review завжди при показі Result
-    renderAnswerReviewSong();
+    // ✅ show review only if not hidden forever
+    const hidden = localStorage.getItem(MB_KEYS.reviewSongHidden) === "1";
+    if (!hidden) renderAnswerReviewSong();
+    else if (reviewBox) {
+      reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
+    }
   }
 
-  // ✅ Generate Result Card: сховати review (fade + прибрати місце)
+  // ✅ Generate Result Card: hide review forever
   genBtn?.addEventListener("click", async () => {
-    hideReviewAnimated();
+    hideReviewAnimatedForever();
     if (!cardCanvas) return;
 
     const p = getProfile();
@@ -815,6 +835,7 @@ function addNoise(ctx, x, y, w, h, alpha = 0.06) {
   ctx.putImageData(img, x, y);
 }
 
+/* ===== Top profile ===== */
 function renderTopProfile() {
   const pill = document.getElementById("profilePill");
   if (!pill) return;
