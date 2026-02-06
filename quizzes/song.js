@@ -141,6 +141,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const genBtn = document.getElementById("genBtn");
   const cardZone = document.getElementById("cardZone");
+  const reviewBox = document.getElementById("reviewBox");
+  const reviewList = document.getElementById("reviewList");
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
@@ -334,6 +336,34 @@ document.addEventListener("DOMContentLoaded", () => {
     playerTime.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
   }
 
+  function renderAnswerReviewSong() {
+  if (!reviewBox || !reviewList) return;
+
+  reviewList.innerHTML = "";
+
+  QUESTIONS.forEach((q, i) => {
+    const correctLabel = q.options?.[q.correctIndex] ?? "—";
+
+    const item = document.createElement("div");
+    item.className = "reviewItem";
+
+    const qEl = document.createElement("div");
+    qEl.className = "reviewQ";
+    qEl.textContent = `Q ${i + 1}`;
+
+    const aEl = document.createElement("div");
+    aEl.className = "reviewA";
+    aEl.textContent = correctLabel;
+
+    item.appendChild(qEl);
+    item.appendChild(aEl);
+    reviewList.appendChild(item);
+  });
+
+  reviewBox.classList.remove("isHidden");
+  reviewBox.style.display = "block";
+}
+
   // ---------- QUIZ ----------
   function renderQuestion() {
     const q = QUESTIONS[idx];
@@ -415,9 +445,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (rTotal) rTotal.textContent = String(result.total);
     if (rCorrect) rCorrect.textContent = String(result.correct);
     if (rAcc) rAcc.textContent = `${result.acc}%`;
+    renderAnswerReviewSong();
   }
 
   genBtn?.addEventListener("click", async () => {
+    if (reviewBox) reviewBox.classList.add("isHidden");
     if (!cardCanvas) return;
 
     const p = getProfile();
