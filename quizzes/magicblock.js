@@ -7,9 +7,11 @@ const MB_KEYS = {
   resMagic: "mb_result_magicblock",
   prevMagic: "mb_prev_magicblock",
 
-  // progress for HOME (question number 1..10)
   progMagic: "mb_prog_magicblock",
   progMagicState: "mb_prog_magicblock_state", // JSON { idx, correct, answers }
+
+  // ✅ Answer Review: hide forever after Generate
+  reviewMagicHidden: "mb_review_magicblock_hidden",
 };
 
 const QUIZ_CARD = {
@@ -44,10 +46,7 @@ function ensureResultId(prefix, existing) {
   return `MB-${prefix}-${makeSerial(6)}`;
 }
 
-/* ===== Progress helpers (MagicBlock) =====
-   HOME expects mb_prog_magicblock as question number (1..10).
-   If user is on Question 5 => idx=4 => store 5 (50%).
-*/
+/* ===== Progress helpers (MagicBlock) ===== */
 function saveProgressMagic(idx0, correct, answers) {
   const total = 10;
   const idx = Math.max(0, Math.min(total - 1, Number(idx0) || 0));
@@ -65,7 +64,7 @@ function saveProgressMagic(idx0, correct, answers) {
 }
 
 function loadProgressMagic() {
-  const n = Number(localStorage.getItem(MB_KEYS.progMagic) || "0"); // 1..10
+  const n = Number(localStorage.getItem(MB_KEYS.progMagic) || "0");
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progMagicState), null);
   if (!Number.isFinite(n) || n <= 0) return null;
 
@@ -89,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
   forcePlayAll(".brand__logo");
   renderTopProfile();
 
-  // ✅ Put your real questions here
   const QUESTIONS = [
     { text: "What does MagicBlock use to scale fully on-chain apps without fragmenting state?", options: ["Ephemeral Rollups (ERs)", "Centralized sequencers", "Cross-chain bridges", "A new L1 built from scratch"], correctIndex: 0 },
     { text: "What is MagicBlock?", options: ["A custodial wallet", "A real-time engine integrated with Solana", "A proof-of-work chain", "A centralized exchange"], correctIndex: 1 },
@@ -121,13 +119,71 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
+  // ✅ review elements (must exist in HTML)
+  const reviewBox = document.getElementById("reviewBox");
+  const reviewList = document.getElementById("reviewList");
+
   const criticalOk = !!(quizPanel && qTitle && questionText && optionsEl && nextBtn && resultPanel);
   if (!criticalOk) {
     console.error("[MagicBlock Quiz] Missing critical DOM nodes. Check IDs in magicblock.html.");
     return;
   }
 
-  let idx = 0; // 0..9
+  // ===== Review helpers =====
+  function showReview() {
+    if (!reviewBox) return;
+    reviewBox.style.display = "block";
+    reviewBox.classList.remove("isHidden");
+    reviewBox.classList.remove("isGone");
+  }
+
+  function hideReviewAnimatedForever() {
+    localStorage.setItem(MB_KEYS.reviewMagicHidden, "1");
+    if (!reviewBox) return;
+
+    reviewBox.classList.add("isHidden");
+    window.setTimeout(() => {
+      reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
+    }, 220);
+  }
+
+  function renderAnswerReviewMagic() {
+    if (!reviewBox || !reviewList) return;
+
+    const hidden = localStorage.getItem(MB_KEYS.reviewMagicHidden) === "1";
+    if (hidden) {
+      reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
+      return;
+    }
+
+    reviewList.innerHTML = "";
+
+    QUESTIONS.forEach((q, i) => {
+      const questionTextFull = q.text || `Question ${i + 1} of ${QUESTIONS.length}`;
+      const correctLabel = q.options?.[q.correctIndex] ?? "—";
+
+      const item = document.createElement("div");
+      item.className = "reviewItem";
+
+      const qEl = document.createElement("div");
+      qEl.className = "reviewQ";
+      qEl.textContent = questionTextFull;
+
+      const aEl = document.createElement("div");
+      aEl.className = "reviewA";
+      aEl.textContent = correctLabel;
+
+      item.appendChild(qEl);
+      item.appendChild(aEl);
+      reviewList.appendChild(item);
+    });
+
+    showReview();
+  }
+
+  let idx = 0;
   let correct = 0;
   let selectedIndex = null;
   let answers = [];
@@ -135,7 +191,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const savedRes = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
   const done = localStorage.getItem(MB_KEYS.doneMagic) === "1";
 
-  // If completed => show result
   if (done && savedRes) {
     if (!savedRes.id) {
       savedRes.id = ensureResultId(QUIZ_CARD.idPrefix, savedRes.id);
@@ -147,7 +202,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // restore progress
   const prog = loadProgressMagic();
   if (prog) {
     idx = prog.idx;
@@ -155,7 +209,6 @@ document.addEventListener("DOMContentLoaded", () => {
     answers = prog.answers;
   }
 
-  // keep HOME progress synced immediately
   saveProgressMagic(idx, correct, answers);
   renderQuestion();
 
@@ -191,7 +244,6 @@ document.addEventListener("DOMContentLoaded", () => {
       optionsEl.appendChild(btn);
     });
 
-    // sync HOME progress on every render
     saveProgressMagic(idx, correct, answers);
   }
 
@@ -206,7 +258,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const q = QUESTIONS[idx];
     answers[idx] = selectedIndex;
-
     if (selectedIndex === q.correctIndex) correct++;
 
     idx++;
@@ -217,7 +268,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // finished
     const total = QUESTIONS.length;
     const acc = Math.round((correct / total) * 100);
     const p = getProfile();
@@ -249,9 +299,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (rTotal) rTotal.textContent = String(result.total);
     if (rCorrect) rCorrect.textContent = String(result.correct);
     if (rAcc) rAcc.textContent = `${result.acc}%`;
+
+    const hidden = localStorage.getItem(MB_KEYS.reviewMagicHidden) === "1";
+    if (!hidden) renderAnswerReviewMagic();
+    else if (reviewBox) {
+      reviewBox.classList.add("isGone");
+      reviewBox.style.display = "none";
+    }
   }
 
   genBtn?.addEventListener("click", async () => {
+    // ✅ hide forever
+    hideReviewAnimatedForever();
+
     const p = getProfile();
     const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMagic), null);
     if (!r || !cardCanvas) return;
@@ -310,9 +370,31 @@ document.addEventListener("DOMContentLoaded", () => {
   restoreQuizPreview(MB_KEYS.prevMagic, cardCanvas, cardZone, dlBtn, genBtn);
 });
 
-/* =========================
-   PREVIEW RESTORE
-========================= */
+/* ===== Top profile pill ===== */
+function renderTopProfile() {
+  const pill = document.getElementById("profilePill");
+  if (!pill) return;
+
+  const img = pill.querySelector("img");
+  const nameEl = pill.querySelector("[data-profile-name]");
+  const hintEl = pill.querySelector("[data-profile-hint]");
+
+  const p = safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
+  if (!p) {
+    if (img) img.src = "";
+    if (nameEl) nameEl.textContent = "No profile";
+    if (hintEl) hintEl.textContent = "Go Home";
+    pill.addEventListener("click", () => location.href = "../index.html");
+    return;
+  }
+
+  if (img) img.src = p.avatar || "";
+  if (nameEl) nameEl.textContent = p.name || "Player";
+  if (hintEl) hintEl.textContent = "Edit on Home";
+  pill.addEventListener("click", () => location.href = "../index.html");
+}
+
+/* ===== preview helpers + canvas helpers (unchanged, keep your existing ones) ===== */
 async function restoreQuizPreview(previewKey, cardCanvas, cardZone, dlBtn, genBtn) {
   const prev = localStorage.getItem(previewKey);
   if (!prev || !prev.startsWith("data:image/") || !cardCanvas) return false;
