@@ -4,7 +4,6 @@ const MB_KEYS = {
   resMovie: "mb_result_movie",
   prevMovie: "mb_prev_movie",
 
-  // progress (resume) for HOME
   progMovie: "mb_prog_movie",            // number (1..10)
   progMovieState: "mb_prog_movie_state", // JSON { idx, correct, answers }
 };
@@ -91,6 +90,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
 
+  const playOverlayBtn = document.getElementById("videoPlayBtn");
+
   const rName = document.getElementById("rName");
   const rTotal = document.getElementById("rTotal");
   const rCorrect = document.getElementById("rCorrect");
@@ -108,6 +109,41 @@ document.addEventListener("DOMContentLoaded", () => {
   let correct = 0;
   let selectedIndex = null;
   let answers = [];
+
+  // --- overlay helpers ---
+  function showOverlay() {
+    playOverlayBtn?.classList.remove("isHidden");
+  }
+  function hideOverlay() {
+    playOverlayBtn?.classList.add("isHidden");
+  }
+
+  // Клік по кастомній кнопці: дозволений звук + старт відео
+  playOverlayBtn?.addEventListener("click", async () => {
+    if (!frameVideo) return;
+    try {
+      frameVideo.muted = false;      // важливо: звук лише після кліку
+      frameVideo.volume = 1.0;
+      await frameVideo.play();
+      hideOverlay();
+    } catch (e) {
+      // якщо браузер вперся — лишимо overlay, щоб юзер клікнув ще раз
+      showOverlay();
+      console.warn("Play failed:", e);
+    }
+  });
+
+  frameVideo?.addEventListener("pause", () => {
+    // якщо юзер поставив на паузу — покажемо overlay назад
+    // але тільки якщо не на самому кінці “завис”
+    showOverlay();
+  });
+  frameVideo?.addEventListener("ended", () => {
+    showOverlay();
+  });
+  frameVideo?.addEventListener("play", () => {
+    hideOverlay();
+  });
 
   if (done && saved) {
     clearProgressMovie();
@@ -137,12 +173,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const q = QUESTIONS[idx];
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
 
+    // --- VIDEO: no autoplay, show first frame ---
     if (frameVideo) {
       frameVideo.pause();
+      frameVideo.muted = true;   // на етапі “стоїмо” — хай буде muted (все одно paused)
+      frameVideo.currentTime = 0;
+
       frameVideo.src = q.frame;
       frameVideo.load();
-      frameVideo.currentTime = 0;
-      frameVideo.play().catch(() => {});
+
+      showOverlay();
+
+      // Після метаданих — ставимо на початок (інколи 0 не малює кадр, тому 0.001)
+      const onMeta = () => {
+        try {
+          frameVideo.currentTime = 0.001;
+        } catch {}
+        // одразу на паузі
+        frameVideo.pause();
+        frameVideo.removeEventListener("loadedmetadata", onMeta);
+      };
+      frameVideo.addEventListener("loadedmetadata", onMeta);
     }
 
     optionsEl.innerHTML = "";
@@ -160,7 +211,6 @@ document.addEventListener("DOMContentLoaded", () => {
       optionsEl.appendChild(btn);
     });
 
-    // keep HOME progress updated
     saveProgressMovie(idx, correct, answers);
   }
 
