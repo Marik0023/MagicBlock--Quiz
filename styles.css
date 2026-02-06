@@ -1046,3 +1046,24 @@ body.mbQuiz .cardActions{
   font-size: 13px;
   color: rgba(255,255,255,.80);
 }
+
+/* ===== Vinyl ===== */
+.vinyl{
+  width: 140px;
+  height: 140px;
+  object-fit: contain;
+  display: block;
+
+  transform: rotate(0deg);
+  transition: transform .15s linear;
+  will-change: transform;
+}
+
+.vinyl.isSpinning{
+  animation: vinylSpin 1.1s linear infinite;
+}
+
+@keyframes vinylSpin{
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
