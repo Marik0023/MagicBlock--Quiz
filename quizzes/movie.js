@@ -1,6 +1,7 @@
+// quizzes/movie.js
+
 const MB_KEYS = {
   profile: "mb_profile",
-
   doneMovie: "mb_done_movie",
   resMovie: "mb_result_movie",
   prevMovie: "mb_prev_movie",
@@ -8,8 +9,7 @@ const MB_KEYS = {
   progMovie: "mb_prog_movie",            // number (1..10)
   progMovieState: "mb_prog_movie_state", // JSON { idx, correct, answers }
 
-  // ✅ Answer Review: hide forever after Generate
-  reviewMovieHidden: "mb_review_movie_hidden",
+  reviewHiddenMovie: "mb_review_hidden_movie", // "1" після Generate
 };
 
 function safeJSONParse(v, fallback = null) {
@@ -77,16 +77,16 @@ document.addEventListener("DOMContentLoaded", () => {
   renderTopProfile();
 
   const QUESTIONS = [
-    { frame: "../assets/movies/1.mp4",  text: "Which movie is shown in this frame?", options: ["The Social Network", "Steve Jobs", "The Imitation Game", "Moneyball"], correctIndex: 0 },
-    { frame: "../assets/movies/2.mp4",  text: "Which movie is shown in this frame?", options: ["The Internship", "We’re the Millers", "Grown Ups", "Daddy’s Home"], correctIndex: 2 },
-    { frame: "../assets/movies/3.mp4",  text: "Which movie is shown in this frame?", options: ["The Lord of the Rings", "Harry Potter", "Percy Jackson & the Olympians", "The Chronicles of Narnia"], correctIndex: 1 },
-    { frame: "../assets/movies/4.mp4",  text: "Which movie is shown in this frame?", options: ["The Gentlemen", "Layer Cake", "RocknRolla", "Snatch"], correctIndex: 0 },
-    { frame: "../assets/movies/5.mp4",  text: "Which movie is shown in this frame?", options: ["Wednesday", "The Umbrella Academy", "Riverdale", "Chilling Adventures of Sabrina"], correctIndex: 0 },
-    { frame: "../assets/movies/6.mp4",  text: "Which movie is shown in this frame?", options: ["Gravity", "Interstellar", "The Martian", "Arrival"], correctIndex: 1 },
-    { frame: "../assets/movies/7.mp4",  text: "Which movie is shown in this frame?", options: ["The OA", "The X-Files", "Dark", "Stranger Things"], correctIndex: 3 },
-    { frame: "../assets/movies/8.mp4",  text: "Which movie is shown in this frame?", options: ["Need for Speed", "Baby Driver", "Gone in 60 Seconds", "The Fast and the Furious"], correctIndex: 3 },
-    { frame: "../assets/movies/9.mp4",  text: "Which movie is shown in this frame?", options: ["The Hangover", "Superbad", "21 Jump Street", "Project X"], correctIndex: 0 },
-    { frame: "../assets/movies/10.mp4", text: "Which movie is shown in this frame?", options: ["1917", "Saving Private Ryan", "Hacksaw Ridge", "Fury"], correctIndex: 2 },
+    { frame: "../assets/movies/1.mp4",  options: ["The Social Network", "Steve Jobs", "The Imitation Game", "Moneyball"], correctIndex: 0 },
+    { frame: "../assets/movies/2.mp4",  options: ["The Internship", "We’re the Millers", "Grown Ups", "Daddy’s Home"], correctIndex: 2 },
+    { frame: "../assets/movies/3.mp4",  options: ["The Lord of the Rings", "Harry Potter", "Percy Jackson & the Olympians", "The Chronicles of Narnia"], correctIndex: 1 },
+    { frame: "../assets/movies/4.mp4",  options: ["The Gentlemen", "Layer Cake", "RocknRolla", "Snatch"], correctIndex: 0 },
+    { frame: "../assets/movies/5.mp4",  options: ["Wednesday", "The Umbrella Academy", "Riverdale", "Chilling Adventures of Sabrina"], correctIndex: 0 },
+    { frame: "../assets/movies/6.mp4",  options: ["Gravity", "Interstellar", "The Martian", "Arrival"], correctIndex: 1 },
+    { frame: "../assets/movies/7.mp4",  options: ["The OA", "The X-Files", "Dark", "Stranger Things"], correctIndex: 3 },
+    { frame: "../assets/movies/8.mp4",  options: ["Need for Speed", "Baby Driver", "Gone in 60 Seconds", "The Fast and the Furious"], correctIndex: 3 },
+    { frame: "../assets/movies/9.mp4",  options: ["The Hangover", "Superbad", "21 Jump Street", "Project X"], correctIndex: 0 },
+    { frame: "../assets/movies/10.mp4", options: ["1917", "Saving Private Ryan", "Hacksaw Ridge", "Fury"], correctIndex: 2 },
   ];
 
   const quizPanel = document.getElementById("quizPanel");
@@ -96,8 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const frameVideo = document.getElementById("frameVideo");
   const optionsEl = document.getElementById("options");
   const nextBtn = document.getElementById("nextBtn");
-
-  const playOverlayBtn = document.getElementById("videoPlayBtn"); // full overlay button
+  const playOverlayBtn = document.getElementById("videoPlayBtn");
 
   const rName = document.getElementById("rName");
   const rTotal = document.getElementById("rTotal");
@@ -109,68 +108,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardCanvas = document.getElementById("cardCanvas");
   const dlBtn = document.getElementById("dlBtn");
 
-  // ✅ review elements (must exist in HTML)
   const reviewBox = document.getElementById("reviewBox");
   const reviewList = document.getElementById("reviewList");
 
-  const criticalOk = !!(quizPanel && qTitle && frameVideo && optionsEl && nextBtn && playOverlayBtn);
+  const criticalOk = !!(quizPanel && qTitle && frameVideo && optionsEl && nextBtn && playOverlayBtn && resultPanel);
   if (!criticalOk) {
     console.error("[Movie Quiz] Missing critical DOM nodes. Check IDs in movie.html.");
     return;
-  }
-
-  // ===== Review helpers =====
-  function showReview() {
-    if (!reviewBox) return;
-    reviewBox.style.display = "block";
-    reviewBox.classList.remove("isHidden");
-    reviewBox.classList.remove("isGone");
-  }
-
-  function hideReviewAnimatedForever() {
-    localStorage.setItem(MB_KEYS.reviewMovieHidden, "1");
-    if (!reviewBox) return;
-
-    reviewBox.classList.add("isHidden");
-    window.setTimeout(() => {
-      reviewBox.classList.add("isGone");
-      reviewBox.style.display = "none";
-    }, 220);
-  }
-
-  function renderAnswerReviewMovie() {
-    if (!reviewBox || !reviewList) return;
-
-    const hidden = localStorage.getItem(MB_KEYS.reviewMovieHidden) === "1";
-    if (hidden) {
-      reviewBox.classList.add("isGone");
-      reviewBox.style.display = "none";
-      return;
-    }
-
-    reviewList.innerHTML = "";
-
-    QUESTIONS.forEach((q, i) => {
-      const questionText = q.text || `Question ${i + 1} of ${QUESTIONS.length}`;
-      const correctLabel = q.options?.[q.correctIndex] ?? "—";
-
-      const item = document.createElement("div");
-      item.className = "reviewItem";
-
-      const qEl = document.createElement("div");
-      qEl.className = "reviewQ";
-      qEl.textContent = questionText;
-
-      const aEl = document.createElement("div");
-      aEl.className = "reviewA";
-      aEl.textContent = correctLabel;
-
-      item.appendChild(qEl);
-      item.appendChild(aEl);
-      reviewList.appendChild(item);
-    });
-
-    showReview();
   }
 
   const saved = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
@@ -181,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let selectedIndex = null;
   let answers = [];
 
-  // ===== Overlay + Sound policy =====
+  // ===== Overlay + sound policy =====
   let soundUnlocked = false;
 
   function showOverlay() { playOverlayBtn.classList.remove("isHidden"); }
@@ -241,7 +185,51 @@ document.addEventListener("DOMContentLoaded", () => {
   frameVideo.addEventListener("pause", () => showOverlay());
   frameVideo.addEventListener("ended", () => showOverlay());
 
-  // ===== Init state (done/progress) =====
+  // ===== Answer Review render =====
+  function renderAnswerReviewMovie() {
+    if (!reviewBox || !reviewList) return;
+
+    // якщо вже генерили — review не показуємо
+    if (localStorage.getItem(MB_KEYS.reviewHiddenMovie) === "1") {
+      reviewBox.classList.add("isGone");
+      return;
+    }
+
+    reviewList.innerHTML = "";
+
+    QUESTIONS.forEach((q, i) => {
+      const correctLabel = q.options?.[q.correctIndex] ?? "—";
+      const questionText = "Which movie is shown in this frame?";
+
+      const item = document.createElement("div");
+      item.className = "reviewItem";
+
+      const qEl = document.createElement("div");
+      qEl.className = "reviewQ";
+      qEl.textContent = `Question ${i + 1}`;
+
+      const right = document.createElement("div");
+
+      const aEl = document.createElement("div");
+      aEl.className = "reviewA";
+      aEl.textContent = correctLabel;
+
+      const hint = document.createElement("div");
+      hint.className = "reviewHint";
+      hint.textContent = questionText;
+
+      right.appendChild(aEl);
+      right.appendChild(hint);
+
+      item.appendChild(qEl);
+      item.appendChild(right);
+      reviewList.appendChild(item);
+    });
+
+    reviewBox.classList.remove("isHidden", "isGone");
+  }
+
+  // ===== Init state =====
   if (done && saved) {
     clearProgressMovie();
     showResult(saved);
@@ -270,6 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const q = QUESTIONS[idx];
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
 
+    // VIDEO init
     frameVideo.pause();
     frameVideo.muted = true;
 
@@ -344,25 +333,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showResult(result) {
     quizPanel.style.display = "none";
-    if (resultPanel) resultPanel.style.display = "block";
+    resultPanel.style.display = "block";
 
     if (rName) rName.textContent = result.name || "Player";
     if (rTotal) rTotal.textContent = String(result.total);
     if (rCorrect) rCorrect.textContent = String(result.correct);
     if (rAcc) rAcc.textContent = `${result.acc}%`;
 
-    // ✅ review visible only until Generate
-    const hidden = localStorage.getItem(MB_KEYS.reviewMovieHidden) === "1";
-    if (!hidden) renderAnswerReviewMovie();
-    else if (reviewBox) {
-      reviewBox.classList.add("isGone");
-      reviewBox.style.display = "none";
-    }
+    renderAnswerReviewMovie();
   }
 
   genBtn?.addEventListener("click", async () => {
-    // ✅ hide forever
-    hideReviewAnimatedForever();
+    // Hide review назавжди
+    if (reviewBox && !reviewBox.classList.contains("isGone")) {
+      reviewBox.classList.add("isHidden");
+      setTimeout(() => reviewBox.classList.add("isGone"), 220);
+    }
+    localStorage.setItem(MB_KEYS.reviewHiddenMovie, "1");
 
     const p = getProfile();
     const r = safeJSONParse(localStorage.getItem(MB_KEYS.resMovie), null);
@@ -430,7 +417,7 @@ function renderTopProfile() {
   const img = pill.querySelector("img");
   const nameEl = pill.querySelector("[data-profile-name]");
   const hintEl = pill.querySelector("[data-profile-hint]");
-  const p = getProfile();
+  const p = safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
 
   if (!p) {
     if (img) img.src = "";
