@@ -117,6 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const playBtn = document.getElementById("playBtn");
   const seekBar = document.getElementById("seekBar");
   const playerTime = document.getElementById("playerTime");
+  const vinyl = document.getElementById("vinyl");
 
   const rName = document.getElementById("rName");
   const rTotal = document.getElementById("rTotal");
@@ -179,6 +180,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   audio.addEventListener("play", syncPlayIcon);
   audio.addEventListener("pause", syncPlayIcon);
+  audio.addEventListener("ended", () => {
+    if (vinyl) vinyl.classList.remove("isSpinning");
+    if (seekBar) seekBar.value = "0";
+    syncPlayIcon();
+  });
 
   audio.addEventListener("loadedmetadata", updateTime);
   audio.addEventListener("timeupdate", () => {
@@ -197,6 +203,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function syncPlayIcon() {
     if (playBtn) playBtn.textContent = audio.paused ? "▶" : "⏸";
+
+    if (!vinyl) return;
+    vinyl.classList.toggle("isSpinning", !audio.paused);
   }
   function formatTime(s) {
     if (!isFinite(s)) return "0:00";
