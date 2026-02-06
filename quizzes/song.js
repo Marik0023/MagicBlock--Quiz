@@ -64,7 +64,6 @@ function saveProgressSong(idx, correct, answers) {
 function loadProgressSong() {
   const qNum = Number(localStorage.getItem(MB_KEYS.progSong) || "0");
   const state = safeJSONParse(localStorage.getItem(MB_KEYS.progSongState), null);
-
   if (!Number.isFinite(qNum) || qNum <= 0) return null;
 
   const idx = Number.isFinite(state?.idx) ? state.idx : (qNum - 1);
@@ -98,8 +97,8 @@ function setVinylRotationByTime(audioEl, vinylEl, turns = 8, timeOverride = null
   const t = (timeOverride == null) ? (audioEl.currentTime || 0) : timeOverride;
   const clampedT = Math.max(0, Math.min(dur, t));
   const p = clampedT / dur; // 0..1
-
   const deg = p * 360 * turns;
+
   vinylEl.style.transform = `rotate(${deg}deg)`;
 }
 
@@ -131,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const audio = document.getElementById("audio");
   const playBtn = document.getElementById("playBtn");
   const seekBar = document.getElementById("seekBar");
-  const volBar = document.getElementById("volBar");
+  const volBar = document.getElementById("volBar"); // ✅ тільки тут
   const playerTime = document.getElementById("playerTime");
   const vinyl = document.getElementById("vinyl");
 
@@ -151,27 +150,20 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ===== Volume =====
-const volBar = document.getElementById("volBar");
+  // ===== Volume (без mute) =====
+  audio.volume = 0.8;
+  if (volBar) {
+    volBar.value = String(Math.round(audio.volume * 100));
+    volBar.addEventListener("input", () => {
+      const v = Math.max(0, Math.min(1, Number(volBar.value) / 100));
+      audio.volume = v;
+    });
+  }
 
-// стартова гучність
-audio.volume = 0.8;
+  // 🔧 скільки обертів за весь трек
+  const TURNS_PER_TRACK = 7;
 
-if (volBar) {
-  volBar.value = String(Math.round(audio.volume * 100));
-
-  volBar.addEventListener("input", () => {
-    const v = Math.max(0, Math.min(1, Number(volBar.value) / 100));
-    audio.volume = v;
-  });
-}
-  
-  updateVolIcon();
-
-  // 🔧 тут регулюєш “скільки обертів за весь трек”
-  const TURNS_PER_TRACK = 7; // 8/10/12 — вибери як подобається
-
-  // --- smooth clock: робить rotation плавним, навіть якщо audio.currentTime оновлюється ривками ---
+  // --- smooth clock ---
   const smooth = { running: false, baseT: 0, baseP: 0 };
 
   function smoothStart() {
@@ -194,7 +186,6 @@ if (volBar) {
     let t = smooth.baseT + ((now - smooth.baseP) / 1000) * rate;
 
     const real = audio.currentTime || 0;
-    // якщо браузер “підтягнув” currentTime ривком — ресінкнемось
     if (isFinite(real) && Math.abs(real - t) > 0.18) {
       smooth.baseT = real;
       smooth.baseP = now;
@@ -203,7 +194,7 @@ if (volBar) {
     return t;
   }
 
-  // --- RAF loop for vinyl (super smooth) ---
+  // --- RAF loop for vinyl ---
   let rafId = null;
 
   function startVinylRAF() {
@@ -289,7 +280,6 @@ if (volBar) {
   });
 
   audio.addEventListener("pause", () => {
-    // зупиняємо RAF і ставимо диск точно на поточний час
     stopVinylRAF();
     setVinylRotationByTime(audio, vinyl, TURNS_PER_TRACK, audio.currentTime || 0);
     syncPlayUI();
@@ -306,7 +296,6 @@ if (volBar) {
   });
 
   audio.addEventListener("timeupdate", () => {
-    // UI (слайдер/час) можна лишити на timeupdate — норм
     updateTime();
     if (isFinite(audio.duration) && audio.duration > 0) {
       seekBar.value = String(Math.round((audio.currentTime / audio.duration) * 100));
@@ -321,7 +310,6 @@ if (volBar) {
     const t = (Number(seekBar.value) / 100) * audio.duration;
     audio.currentTime = t;
 
-    // після seek — ресінк smooth clock (щоб не було стрибка)
     if (!audio.paused) {
       smoothResync();
       startVinylRAF();
@@ -357,7 +345,6 @@ if (volBar) {
 
     qTitle.textContent = `Question ${idx + 1} of ${QUESTIONS.length}`;
 
-    // reset player
     resetPlayer();
     audio.src = q.audio || "";
 
