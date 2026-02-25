@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Champion — MagicBlock</title>
+  <link rel="icon" href="../../assets/faviconlogo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="../../assets/faviconlogo/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="../../assets/faviconlogo/favicon-16x16.png">
+  <link rel="apple-touch-icon" href="../../assets/faviconlogo/apple-touch-icon.png">
+  <link rel="manifest" href="../../assets/faviconlogo/site.webmanifest">
+  <meta name="theme-color" content="#0b0b0f">
+  <link rel="stylesheet" href="styles.css?v=20260203" />
+  <link rel="stylesheet" href="../../assets/topbar.css" />
+
+  <!-- Topbar (must load first so header renders before page body) -->
+  <script src="../../assets/js/topbar.js" defer></script>
+
+  <!-- Supabase (public leaderboard sync) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../../assets/js/supabase-config.js?v=20260219" defer></script>
+  <script src="../../assets/js/leaderboard-client.js?v=20260219b" defer></script>
+
+  <script src="champion.js?v=20260203" defer></script>
+
+</head>
+
+<body>
+  <div class="bg">
+    <video class="bg__video" autoplay muted loop playsinline preload="auto">
+      <source src="https://cdn.prod.website-files.com/67dd3f471f62a240dd544dd8%2F67dd41b5485dd4cf31eee3c0_Home_Beams-transcode.mp4" type="video/mp4" />
+    </video>
+    <div class="bg__vignette"></div>
+    <div class="bg__grain"></div>
+  </div>
+
+  <main class="container">
+    <section class="quizHero">
+      <h1>Champion Card</h1>
+      <p class="sub">Unlocks only after completing all 6 quizzes.</p>
+    </section>
+
+    <section class="panel">
+      <div class="resultBox">
+        <h2>Summary</h2>
+
+        <div class="kv"><div class="k">Name</div><div class="v" id="sumName">—</div></div>
+        <div class="kv"><div class="k">Completed quizzes</div><div class="v" id="sumDone">—</div></div>
+        <div class="kv"><div class="k">Total (all)</div><div class="v" id="sumTotal">—</div></div>
+        <div class="kv"><div class="k">Correct (all)</div><div class="v" id="sumCorrect">—</div></div>
+        <div class="kv"><div class="k">Accuracy</div><div class="v" id="sumAcc">—</div></div>
+
+        <div class="btnRow">
+          <button id="genChampBtn" class="btn" disabled>Generate Champion Card</button>
+          <a class="btn btn--ghost" href="index.html">Back to Quizzes</a>
+          <a class="btn btn--ghost" href="../../index.html">Back to Seasons</a>
+        </div>
+
+        <div id="cardZone" class="cardZone">
+          <div class="cardPreview">
+            <div class="neonRing" aria-hidden="true"></div>
+            <canvas id="cardCanvas" width="1400" height="800"></canvas>
+          </div>
+          <div class="cardActions">
+            <button id="dlBtn" class="btn btn--ghost" disabled>Download PNG</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="mbFooter">
+    <div class="mbFooter__inner">
+      <div class="mbFooter__left">powered by markiian_</div>
+      <div class="mbFooter__right">
+        <div class="mbFooter__linksTitle">MagicBlock Official Links</div>
+        <nav class="mbFooter__links" aria-label="MagicBlock social links">
+          <a class="mbFooter__link" data-site="x" href="https://x.com/magicblock" target="_blank" rel="noopener noreferrer">X</a>
+          <a class="mbFooter__link" data-site="discord" href="https://discord.com/invite/MBkdC3gxcv" target="_blank" rel="noopener noreferrer">Discord</a>
+          <a class="mbFooter__link" data-site="youtube" href="https://www.youtube.com/@Magicblock-Labs" target="_blank" rel="noopener noreferrer">YouTube</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
+ 
