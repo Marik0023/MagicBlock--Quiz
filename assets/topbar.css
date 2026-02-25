@@ -1,15 +1,17 @@
-/* MagicBlock Quiz — unified topbar (oval) + mobile burger menu */
+/* MagicBlock Quiz — topbar redesigned to match footer */
 
 .mbqTopbar{
   position: sticky;
   top: 0;
   z-index: 9999;
-  padding: 10px 16px;
+  padding: 8px 8px 0;
   pointer-events: auto;
 }
 
 .mbqTopbar__inner{
-  max-width: 1400px;
+  position: relative;
+  overflow: hidden;
+  max-width: none;
   margin: 0 auto;
 
   display: flex;
@@ -17,18 +19,45 @@
   justify-content: space-between;
   gap: 14px;
 
-  height: 74px;
-  padding: 0 14px;
+  height: 64px;
+  padding: 0 20px;
 
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(10,10,10,.35);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.07);
+
+  background:
+    linear-gradient(
+      105deg,
+      rgba(130,80,255,.08) 0%,
+      rgba(255,255,255,.03) 45%,
+      rgba(80,180,255,.06) 100%
+    );
+
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.06) inset,
+    0 -1px 0 rgba(0,0,0,.25) inset,
+    0 12px 40px rgba(0,0,0,.30);
 }
 
-/* Ensure left/right can shrink instead of overlapping */
+/* shimmer line along the top */
+.mbqTopbar__inner::before{
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.18) 30%,
+    rgba(160,100,255,.22) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
 .mbqTopbar__left,
 .mbqTopbar__right{
   flex: 0 0 auto;
@@ -49,7 +78,6 @@
   min-width: 0;
 }
 
-/* Big logo, but it will NOT stretch the oval height */
 .mbqTopbar__logo{
   width: 160px;
   height: 160px;
@@ -57,7 +85,6 @@
   background: transparent;
   border: none;
   overflow: visible;
-
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,12 +99,12 @@
   display: block;
 }
 
+/* Nav */
 .mbqTopbar__nav{
   flex: 1 1 auto;
   min-width: 0;
-
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
 }
@@ -86,27 +113,53 @@
 .mbqTopbar__nav button{
   -webkit-appearance: none;
   appearance: none;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.20);
-  color: rgba(255,255,255,.92);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 34px;
+  padding: 0 16px;
+
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.04);
+
+  color: rgba(255,255,255,.72);
   text-decoration: none;
-  border-radius: 999px;
-  padding: 9px 14px;
-  font-weight: 800;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .04em;
   cursor: pointer;
   white-space: nowrap;
+
+  transition:
+    transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    box-shadow .18s ease;
 }
 
 .mbqTopbar__nav a:hover,
 .mbqTopbar__nav button:hover{
-  border-color: rgba(255,255,255,.22);
-  background: rgba(255,255,255,.08);
+  transform: translateY(-2px) scale(1.03);
+  background: rgba(160,100,255,.14);
+  border-color: rgba(160,100,255,.35);
+  color: rgba(255,255,255,.97);
+  box-shadow:
+    0 0 18px rgba(140,80,255,.18),
+    0 4px 12px rgba(0,0,0,.25);
+}
+
+.mbqTopbar__nav a:active,
+.mbqTopbar__nav button:active{
+  transform: translateY(0) scale(.98);
 }
 
 .mbqTopbar__nav a.is-active{
-  background: rgba(255,255,255,.14);
-  border-color: rgba(255,255,255,.26);
+  background: rgba(160,100,255,.16);
+  border-color: rgba(160,100,255,.40);
+  color: rgba(255,255,255,.97);
 }
 
 /* Profile pill */
@@ -115,25 +168,43 @@
   align-items: center;
   gap: 10px;
 
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.20);
-  color: rgba(255,255,255,.92);
-  border-radius: 999px;
+  height: 34px;
+  padding: 0 12px;
 
-  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.04);
+
+  color: rgba(255,255,255,.72);
   cursor: pointer;
   white-space: nowrap;
+
+  transition:
+    transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    box-shadow .18s ease;
 }
 
 .mbqTopbar__profile:hover{
-  border-color: rgba(255,255,255,.22);
-  background: rgba(255,255,255,.08);
+  transform: translateY(-2px) scale(1.03);
+  background: rgba(160,100,255,.14);
+  border-color: rgba(160,100,255,.35);
+  color: rgba(255,255,255,.97);
+  box-shadow:
+    0 0 18px rgba(140,80,255,.18),
+    0 4px 12px rgba(0,0,0,.25);
+}
+
+.mbqTopbar__profile:active{
+  transform: translateY(0) scale(.98);
 }
 
 .mbqTopbar__avatar{
-  width: 32px;
-  height: 32px;
-  border-radius: 14px;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.06);
@@ -152,34 +223,45 @@
   text-align: left;
 }
 .mbqTopbar__pname{
-  font-weight: 900;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .02em;
 }
 .mbqTopbar__pedit{
-  opacity: .7;
-  font-weight: 700;
-  font-size: 12px;
+  opacity: .5;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: .03em;
 }
 
-/* Burger button (shown only on mobile) */
+/* Burger */
 .mbqBurger{
   display: none;
   align-items: center;
   justify-content: center;
 
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.20);
-  color: rgba(255,255,255,.92);
-  border-radius: 999px;
+  height: 34px;
+  padding: 0 12px;
 
-  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.80);
+
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
+
+  transition:
+    transform .18s cubic-bezier(.34,1.56,.64,1),
+    background .18s ease,
+    border-color .18s ease;
 }
+
 .mbqBurger:hover{
-  border-color: rgba(255,255,255,.22);
-  background: rgba(255,255,255,.08);
+  transform: translateY(-2px) scale(1.03);
+  background: rgba(160,100,255,.14);
+  border-color: rgba(160,100,255,.35);
 }
 
 /* Mobile menu overlay + panel */
@@ -197,14 +279,15 @@
   width: min(340px, calc(100vw - 24px));
 
   border-radius: 18px;
-  background: rgba(20,20,26,.92);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  background: rgba(14,12,22,.92);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 
-  border: 1px solid rgba(255,255,255,.10);
-  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.06) inset,
+    0 20px 60px rgba(0,0,0,.55);
   z-index: 9999;
-
   overflow: hidden;
 }
 
@@ -213,66 +296,70 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 14px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255,255,255,.07);
 }
 .mbqMenu__title{
-  font-weight: 900;
-  color: rgba(255,255,255,.95);
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.45);
 }
 .mbqMenu__close{
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(0,0,0,.20);
-  color: rgba(255,255,255,.92);
-  border-radius: 999px;
-  padding: 8px 10px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.70);
   cursor: pointer;
+  font-size: 14px;
+  transition: background .15s ease, border-color .15s ease;
 }
 .mbqMenu__close:hover{
-  border-color: rgba(255,255,255,.22);
-  background: rgba(255,255,255,.08);
+  background: rgba(160,100,255,.14);
+  border-color: rgba(160,100,255,.35);
 }
 
 .mbqMenu__item{
   display: block;
   width: 100%;
   text-align: left;
-
-  padding: 14px 14px;
-
-  color: rgba(255,255,255,.92);
+  padding: 14px 16px;
+  color: rgba(255,255,255,.80);
   text-decoration: none;
-
   border: 0;
   background: transparent;
-  font-weight: 800;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .02em;
   cursor: pointer;
+  transition: background .15s ease, color .15s ease;
 }
 .mbqMenu__item:hover{
-  background: rgba(255,255,255,.06);
+  background: rgba(160,100,255,.10);
+  color: rgba(255,255,255,.97);
 }
 
-/* Responsive tweaks */
+/* Responsive */
 @media (max-width: 860px){
   .mbqTopbar__inner{
-    border-radius: 22px;
-    height: 70px;
+    border-radius: 18px;
+    height: 60px;
   }
   .mbqTopbar__logo video,
   .mbqTopbar__logo img{
-    max-height: 58px;
+    max-height: 52px;
   }
 }
 
-/* Mobile: hide tab nav, show burger */
 @media (max-width: 560px){
   .mbqTopbar{
-    padding: 8px 12px;
+    padding: 8px 8px 0;
   }
   .mbqTopbar__inner{
-    height: 64px;
-    padding: 0 10px;
+    height: 56px;
+    padding: 0 14px;
   }
   .mbqTopbar__nav{
     display: none;
@@ -288,6 +375,6 @@
   }
   .mbqTopbar__logo video,
   .mbqTopbar__logo img{
-    max-height: 52px;
+    max-height: 48px;
   }
 }
