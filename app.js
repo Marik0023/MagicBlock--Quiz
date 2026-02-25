@@ -1,67 +1,79 @@
 const MB_KEYS = {
   profile: "mb_profile",
-
-  doneSong: "mb_done_song",
-  doneMovie: "mb_done_movie",
-  doneMagic: "mb_done_magicblock",
-
-  resSong: "mb_result_song",
-  resMovie: "mb_result_movie",
-  resMagic: "mb_result_magicblock",
-
-  // progress (resume) — NUMBER 0..10 (show only if >=1)
-  progSong: "mb_prog_song",
-  progMovie: "mb_prog_movie",
-  progMagic: "mb_prog_magicblock",
-
-  // optional progress JSON state (not used on home)
-  progSongState: "mb_prog_song_state",
-  progMovieState: "mb_prog_movie_state",
-  progMagicState: "mb_prog_magicblock_state",
-
-  // champion persistence
-  champId: "mb_champ_id",
   champPng: "mb_champ_png",
   champReady: "mb_champ_ready",
 };
+
+const BIG_STORAGE_KEYS = [
+  // season 1 quiz result cards (also covered legacy S2 collisions — deduplicated)
+  "mb_png_song","mb_png_movie","mb_png_magicblock",
+  // season 2 quiz result cards (namespaced)
+  "mb_s2_png_song","mb_s2_png_movieframe","mb_s2_png_movieemoji","mb_s2_png_silhouette","mb_s2_png_truefalse","mb_s2_png_magicblock",
+  // champion cards
+  "mb_champ_png","mb_champ_ready",
+  "mb_s2_champ_png","mb_s2_champ_ready",
+  "mb_champ_png_s3","mb_champ_ready_s3",
+];
+
+function freeStorageSpace(){
+  // Remove largest / safest-to-recompute items first
+  BIG_STORAGE_KEYS.forEach(k => localStorage.removeItem(k));
+}
+
+function setItemWithRetry(key, value, {onFailMessage} = {}){
+  try{
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e){
+    console.error("localStorage setItem failed:", key, e);
+    freeStorageSpace();
+    try{
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e2){
+      console.error("localStorage setItem retry failed:", key, e2);
+      if (onFailMessage) alert(onFailMessage);
+      return false;
+    }
+  }
+}
+
 
 function safeJSONParse(v, fallback = null){
   try { return JSON.parse(v); } catch { return fallback; }
 }
 
-function inQuizzesFolder(){
-  return location.pathname.includes("/quizzes/");
-}
-function homeHref(){
-  return inQuizzesFolder() ? "../index.html" : "index.html";
-}
-function championHref(){
-  return inQuizzesFolder() ? "../champion.html" : "champion.html";
-}
-function assetPath(p){
-  return inQuizzesFolder() ? `../${p}` : p;
-}
-
-const PLACEHOLDER_AVATAR = assetPath("assets/uploadavatar.jpg");
-
 function getProfile(){
   return safeJSONParse(localStorage.getItem(MB_KEYS.profile), null);
 }
 
+function ensureDeviceIdInProfile(){
+  try{
+    const p = getProfile();
+    if (!p) return;
+    if (p.device_id) return;
+
+    const did = (localStorage.getItem("mb_device_id") || "").trim();
+    if (!did) return;
+
+    // Keep everything else intact; just inject device_id for stable leaderboard matching.
+    setProfile({ ...p, device_id: did });
+  } catch {}
+}
+
+
 /**
- * ✅ If storage full -> clear champion PNG and retry later
+ * If storage full -> clear champion PNG and retry later
  */
 function setProfile(profile){
   try{
-    localStorage.setItem(MB_KEYS.profile, JSON.stringify(profile));
-    return true;
+    return setItemWithRetry(MB_KEYS.profile, JSON.stringify(profile), { onFailMessage: "Storage is full. Please clear some space (or reset results) and try again." });
+    
   } catch (e){
     console.error("setProfile failed:", e);
-
     // free space: champion PNG can be huge
     localStorage.removeItem(MB_KEYS.champPng);
     localStorage.removeItem(MB_KEYS.champReady);
-
     alert("Storage was full. I cleared Champion preview. Try saving avatar again.");
     return false;
   }
@@ -77,36 +89,15 @@ function forcePlayAll(selector){
   window.addEventListener("touchstart", tryPlay, { once:true });
 }
 
-forcePlayAll(".bg__video");
-forcePlayAll(".brand__logo");
-forcePlayAll(".resultLogo");
+const REPO_BASE = (() => {
+  const parts = (location.pathname || "").split("/").filter(Boolean);
+  // On GitHub Pages: /<repo>/... -> base = /<repo>/
+  if (!parts.length) return "/";
+  return "/" + parts[0] + "/";
+})();
 
-const y = document.getElementById("year");
-if (y) y.textContent = new Date().getFullYear();
+const PLACEHOLDER_AVATAR = REPO_BASE + "assets/uploadavatar.jpg";
 
-/* ===== progress helpers (HOME) ===== */
-function getProgNum(key){
-  const n = Number(localStorage.getItem(key) || "0");
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(10, n));
-}
-
-function clearProgressForQuiz(k){
-  if (k === "song"){
-    localStorage.removeItem(MB_KEYS.progSong);
-    localStorage.removeItem(MB_KEYS.progSongState);
-  }
-  if (k === "movie"){
-    localStorage.removeItem(MB_KEYS.progMovie);
-    localStorage.removeItem(MB_KEYS.progMovieState);
-  }
-  if (k === "magicblock"){
-    localStorage.removeItem(MB_KEYS.progMagic);
-    localStorage.removeItem(MB_KEYS.progMagicState);
-  }
-}
-
-/* ===== Profile pill ===== */
 function renderTopProfile(){
   const pill = document.getElementById("profilePill");
   if (!pill) return;
@@ -125,49 +116,15 @@ function renderTopProfile(){
 
   if (avatarImg) avatarImg.src = p.avatar || PLACEHOLDER_AVATAR;
   if (nameEl) nameEl.textContent = p.name || "Player";
-  if (hintEl) hintEl.textContent = inQuizzesFolder() ? "Home" : "Edit";
+  if (hintEl) hintEl.textContent = "Edit";
 }
 
-/* ===== Profile modal logic (home) ===== */
-// function openProfileModal(force = false){
-//   const modal = document.getElementById("profileModal");
-//   if (!modal) return;
-//   modal.classList.add("isOpen");
-
-//   const p = getProfile();
-//   const nameInput = document.getElementById("profileName");
-//   const fileInput = document.getElementById("profileFile");
-//   const preview = document.getElementById("profilePreview");
-//   const saveBtn = document.getElementById("profileSaveBtn");
-//   const avatarBox = document.getElementById("avatarBox");
-
-//   if (nameInput) nameInput.value = p?.name || "";
-
-//   if (preview){
-//     if (p?.avatar && p.avatar.startsWith("data:")){
-//       preview.src = p.avatar;
-//       avatarBox?.classList.remove("isPlaceholder");
-//     } else {
-//       preview.src = PLACEHOLDER_AVATAR;
-//       avatarBox?.classList.add("isPlaceholder");
-//     }
-//   }
-
-//   if (fileInput) fileInput.value = "";
-
-//   const closeBtn = document.getElementById("profileCloseBtn");
-//   if (closeBtn){
-//     closeBtn.style.display = (force && !p) ? "none" : "flex";
-//   }
-
-//   if (saveBtn) saveBtn.disabled = false;
-// }
 function openProfileModal(force = false){
   const modal = document.getElementById("profileModal");
   if (!modal) return;
 
   const p = getProfile();
-  const isEdit = !!p; // ✅ якщо профіль вже є — це режим редагування
+  const isEdit = !!p;
 
   modal.classList.add("isOpen");
 
@@ -177,9 +134,7 @@ function openProfileModal(force = false){
   const saveBtn = document.getElementById("profileSaveBtn");
   const avatarBox = document.getElementById("avatarBox");
 
-  // ✅ ЗМІНА: підпис кнопки залежно від режиму
   if (saveBtn) saveBtn.textContent = isEdit ? "Edit" : "Start";
-
   if (nameInput) nameInput.value = p?.name || "";
 
   if (preview){
@@ -240,11 +195,18 @@ function initProfileModal(){
     let avatar = old.avatar || "";
     if ((preview?.src || "").startsWith("data:")) avatar = preview.src;
 
-    const ok = setProfile({ name, avatar });
+    // Keep any extra fields (e.g. saved device_id) to avoid breaking leaderboard matching.
+    const ok = setProfile({ ...old, name, avatar });
     if (!ok) return;
 
     renderTopProfile();
     closeProfileModal();
+
+    // Notify subpages (e.g. /leaderboard/) that profile/avatar changed,
+    // so they can re-render immediately.
+    try {
+      window.dispatchEvent(new CustomEvent('mbq:profile-updated', { detail: { name, avatar } }));
+    } catch {}
   });
 
   function fileToCompressedDataURL(file, maxSize = 512, quality = 0.85){
@@ -278,289 +240,376 @@ function initProfileModal(){
   }
 }
 
-/* ===== Home badges/buttons ===== */
-function isDone(key){ return localStorage.getItem(key) === "1"; }
 
-function updateChampionGlowUI(allDone){
-  const champWrap = document.getElementById("championWrap");
-  if (!champWrap || !allDone) return;
-
-  const png = localStorage.getItem(MB_KEYS.champPng);
-  const preview = document.getElementById("championPreview");
-  const img = document.getElementById("championPreviewImg");
-  const hint = document.getElementById("championHint");
-  const btn = document.getElementById("openChampionBtn");
-
-  if (png && png.startsWith("data:image/")){
-    champWrap.classList.add("champion--glow");
-
-    if (preview) preview.style.display = "block";
-    if (img) img.src = png;
-
-    if (hint) hint.style.display = "block";
-    if (btn) btn.textContent = "Open Champion Card";
-  } else {
-    champWrap.classList.remove("champion--glow");
-    if (preview) preview.style.display = "none";
-    if (hint) hint.style.display = "none";
-    if (btn) btn.textContent = "Generate Champion Card";
-  }
-
-  if (preview){
-    preview.style.cursor = "pointer";
-    preview.onclick = () => (location.href = championHref());
-  }
-}
-
-/* ✅ HOME: mini progress under each button */
-function updateMiniProgressUI(){
-  const total = 10;
-
-  const map = {
-    song: { progKey: MB_KEYS.progSong, doneKey: MB_KEYS.doneSong },
-    movie: { progKey: MB_KEYS.progMovie, doneKey: MB_KEYS.doneMovie },
-    magicblock: { progKey: MB_KEYS.progMagic, doneKey: MB_KEYS.doneMagic },
-  };
-
-  Object.entries(map).forEach(([k, keys]) => {
-    const wrap = document.querySelector(`.miniProg[data-prog="${k}"]`);
-    if (!wrap) return;
-
-    // completed => hide
-    if (localStorage.getItem(keys.doneKey) === "1"){
-      wrap.style.display = "none";
-      return;
-    }
-
-    // prog = next question number (1..10). Show ONLY if user already answered >=1 => prog >= 2
-    const nextQ = getProgNum(keys.progKey);
-    if (nextQ < 2){
-      wrap.style.display = "none";
-      return;
-    }
-
-    const answered = Math.min(total, Math.max(0, nextQ - 1)); // 2 -> 1 answered
-    const pct = Math.round((answered / total) * 100);
-
-    wrap.style.display = "flex";
-
-    const fill = wrap.querySelector(".miniProg__fill");
-    const text = wrap.querySelector(".miniProg__text");
-    if (fill) fill.style.width = `${pct}%`;
-    if (text) text.textContent = `${pct}%`;
-  });
-}
-
-/**
- * ✅ Buttons logic:
- * - Done => "Open"
- * - Not done + progress exists => "Continue"
- * - Not done + no progress => "Start"
- * Also clears progress if done.
- */
-function updateBadges(){
-  const map = {
-    song: { doneKey: MB_KEYS.doneSong, progKey: MB_KEYS.progSong },
-    movie: { doneKey: MB_KEYS.doneMovie, progKey: MB_KEYS.progMovie },
-    magicblock: { doneKey: MB_KEYS.doneMagic, progKey: MB_KEYS.progMagic },
-  };
-
-  let allDone = true;
-
-  Object.entries(map).forEach(([k, keys]) => {
-    const done = isDone(keys.doneKey);
-    if (!done) allDone = false;
-
-    if (done){
-      clearProgressForQuiz(k);
-    }
-
-    const badge = document.querySelector(`[data-badge="${k}"]`);
-    if (badge) badge.style.display = done ? "inline-flex" : "none";
-
-    const btn = document.querySelector(`[data-start="${k}"]`);
-    if (!btn) return;
-
-    if (done){
-      btn.textContent = "Open";
-      return;
-    }
-
-    const nextQ = getProgNum(keys.progKey);
-    btn.textContent = (nextQ >= 2) ? "Continue" : "Start";
-  });
-
-  const champ = document.getElementById("championWrap");
-  if (champ) champ.style.display = allDone ? "block" : "none";
-
-  updateChampionGlowUI(allDone);
-  updateMiniProgressUI();
-}
-
-function initHomeButtons(){
-  const pill = document.getElementById("profilePill");
-  const hasModal = !!document.getElementById("profileModal");
-
-  if (pill){
-    pill.addEventListener("click", () => {
-      if (hasModal) openProfileModal(false);
-      else location.href = homeHref();
-    });
-  }
-
-  document.querySelectorAll("[data-start]").forEach(btn => {
+function initSeasonButtons(){
+  document.querySelectorAll("[data-season]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const k = btn.getAttribute("data-start");
-      if (k === "song") location.href = "quizzes/song.html";
-      if (k === "movie") location.href = "quizzes/movie.html";
-      if (k === "magicblock") location.href = "quizzes/magicblock.html";
+      const s = btn.getAttribute("data-season");
+      if (!s) return;
+
+      if (s === "s1") return (location.href = "seasons/s1/index.html");
+      if (s === "s2") return (location.href = "seasons/s2/index.html");
+      // s3 stays disabled for now
     });
   });
-
-  const champBtn = document.getElementById("openChampionBtn");
-  champBtn?.addEventListener("click", () => location.href = championHref());
 }
 
-/* ===== Bootstrap ===== */
-renderTopProfile();
-initProfileModal();
-updateBadges();
 
-// ✅ CALL HERE (Step 3)
-const allDone =
-  isDone(MB_KEYS.doneSong) &&
-  isDone(MB_KEYS.doneMovie) &&
-  isDone(MB_KEYS.doneMagic);
+function updateSeasonCompletedBadges(){
+  const map = {
+    s1: { pngKey: "mb_champ_png", readyKey: "mb_champ_ready" },
+    s2: { pngKey: "mb_s2_champ_png", readyKey: "mb_s2_champ_ready" },
+    s3: { pngKey: "mb_champ_png_s3", readyKey: "mb_champ_ready_s3" },
+  };
 
-updateFooterHint(allDone); 
-initHomeButtons();
+  Object.entries(map).forEach(([sid, keys]) => {
+    const badge = document.querySelector(`[data-season-badge="${sid}"]`);
+    if (!badge) return;
 
-// === Bonus ===
-function updateFooterHint(isChampionUnlocked) {
-  const el = document.getElementById("footerHint");
-  if (!el) return;
+    const png = localStorage.getItem(keys.pngKey) || "";
+    const ready = localStorage.getItem(keys.readyKey) === "1";
+    const done = png.startsWith("data:image/") || ready;
+    badge.style.display = done ? "inline-flex" : "none";
+  });
+}
 
-  if (isChampionUnlocked) {
-    el.style.display = "none"; // hide completely
-  } else {
-    el.style.display = "";
-    el.textContent = "Complete all 3 quizzes to unlock an exclusive bonus ✨";
+/* =========================
+   Season progress + CTA (ROOT)
+   Rules:
+   - Button: Start (no progress) -> Continue (answered >= 1) -> Open (season done + champion ready)
+   - Season 3 is coming soon: no progress UI updates
+========================= */
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function getProgNum10(key){
+  const n = Number(localStorage.getItem(key) || "0");
+  if (!Number.isFinite(n)) return 0;
+  return clamp(n, 0, 10);
+}
+
+// In quizzes, progress is stored as "next question number" (Q1 answered => nextQ=2)
+function answeredCountFromProg(progKey, stateKey){
+  const raw = localStorage.getItem(progKey);
+  const n = raw ? parseInt(raw, 10) : 0;
+  if(!n || !Number.isFinite(n)) return 0;
+
+  // Guard against stale/colliding keys: only trust progress if the detailed state exists.
+  if(stateKey){
+    const state = localStorage.getItem(stateKey);
+    if(!state) return 0;
+  }
+  // Convert "next question number" to "answered count".
+  // Example: after answering Q1, nextQ is 2, so answered is 1.
+  const answered = n - 1;
+  return clamp(answered, 0, 10);
+}
+
+const SEASON_DEFS = {
+  s1: {
+    active: true,
+    openHref: "seasons/s1/index.html",
+    champ: { pngKey: "mb_champ_png", readyKey: "mb_champ_ready" },
+    quizzes: [
+      { doneKey: "mb_done_song",        progKey: "mb_prog_song" },
+      { doneKey: "mb_done_movie",       progKey: "mb_prog_movie" },
+      { doneKey: "mb_done_magicblock",  progKey: "mb_prog_magicblock" },
+    ],
+  },
+  s2: {
+    active: true,
+    openHref: "seasons/s2/index.html",
+    champ: { pngKey: "mb_s2_champ_png", readyKey: "mb_s2_champ_ready" },
+    quizzes: [
+      { doneKey: "mb_s2_done_movieframe",  progKey: "mb_s2_prog_movieframe" },
+      { doneKey: "mb_s2_done_movieemoji",  progKey: "mb_s2_prog_movieemoji" },
+      { doneKey: "mb_s2_done_song",        progKey: "mb_s2_prog_song" },
+      { doneKey: "mb_s2_done_truefalse",   progKey: "mb_s2_prog_truefalse" },
+      { doneKey: "mb_s2_done_silhouette",  progKey: "mb_s2_prog_silhouette" },
+      { doneKey: "mb_s2_done_magicblock",  progKey: "mb_s2_prog_magicblock" },
+    ],
+  },
+  s3: {
+    active: false,
+    openHref: "seasons/s3/index.html",
+    champ: { pngKey: "mb_champ_png_s3", readyKey: "mb_champ_ready_s3" },
+    quizzes: [],
+  }
+};
+
+function seasonProgressPct(seasonId){
+  const def = SEASON_DEFS[seasonId];
+  if (!def || !def.quizzes.length) return 0;
+
+  let answered = 0;
+  const total = def.quizzes.length * 10;
+
+  for (const q of def.quizzes){
+    const done = localStorage.getItem(q.doneKey) === "1";
+    if (done) answered += 10;
+    else answered += answeredCountFromProg(q.progKey, q.stateKey);
+  }
+
+  return Math.round((answered / total) * 100);
+}
+
+function seasonHasAnyProgress(seasonId){
+  const def = SEASON_DEFS[seasonId];
+  if (!def) return false;
+  for (const q of def.quizzes){
+    if (localStorage.getItem(q.doneKey) === "1") return true;
+    if (answeredCountFromProg(q.progKey, q.stateKey) > 0) return true;
+  }
+  return false;
+}
+
+function seasonAllQuizzesDone(seasonId){
+  const def = SEASON_DEFS[seasonId];
+  if (!def || !def.quizzes.length) return false;
+  return def.quizzes.every(q => localStorage.getItem(q.doneKey) === "1");
+}
+
+function seasonChampionReady(seasonId){
+  const def = SEASON_DEFS[seasonId];
+  if (!def) return false;
+  const png = localStorage.getItem(def.champ.pngKey) || "";
+  const ready = localStorage.getItem(def.champ.readyKey) === "1";
+  return png.startsWith("data:image/") || ready;
+}
+
+function renderHomeChampionCards(){
+  const seasons = ["s1", "s2"];
+
+  for (const seasonId of seasons){
+    const preview = document.getElementById(seasonId === "s1" ? "homeChampPreviewS1" : "homeChampPreviewS2");
+    const status  = document.getElementById(seasonId === "s1" ? "homeChampStatusS1"  : "homeChampStatusS2");
+    const hint    = document.getElementById(seasonId === "s1" ? "homeChampHintS1"    : "homeChampHintS2");
+    // S1 action button gets a dynamic label depending on state
+    const actionBtn = seasonId === "s1" ? document.getElementById("homeChampActionS1") : null;
+    if (!preview || !status || !hint) continue;
+
+    const def = SEASON_DEFS[seasonId];
+    const png = (localStorage.getItem(def?.champ?.pngKey || "") || "").trim();
+    const hasImage = png.startsWith("data:image/");
+    const completed = seasonAllQuizzesDone(seasonId);
+
+    preview.classList.remove("hasImage");
+    status.classList.remove("isReady", "isLegacy");
+
+    if (hasImage){
+      preview.classList.add("hasImage");
+      preview.innerHTML = `<img src="${png}" alt="${seasonId.toUpperCase()} Champion Card">`;
+      status.textContent = "Generated";
+      status.classList.add("isReady");
+      hint.textContent = seasonId === "s1"
+        ? "Season 1 champion card is saved locally and ready for leaderboard sync."
+        : "Season 2 champion card is saved locally.";
+      // Card already exists — show "Regenerate / Open Card"
+      if (actionBtn) actionBtn.textContent = "Regenerate / Open Card";
+      continue;
+    }
+
+    if (completed){
+      preview.innerHTML = `<div class="homeChampCard__placeholder">${seasonId.toUpperCase()} is completed, but champion card is not generated yet.</div>`;
+      if (seasonId === "s1"){
+        status.textContent = "Generate card";
+        hint.textContent = "Season 1 complete! Open the Champion page to generate your card.";
+        if (actionBtn) actionBtn.textContent = "Generate Champion Card";
+      } else {
+        status.textContent = "Generate card";
+        hint.textContent = "Open Season 2 Champion Page and generate the card.";
+      }
+      status.classList.add("isLegacy");
+      continue;
+    }
+
+    preview.innerHTML = `<div class="homeChampCard__placeholder">No ${seasonId.toUpperCase()} champion card yet</div>`;
+    status.textContent = "No card yet";
+    hint.textContent = seasonId === "s1"
+      ? "Complete Season 1 and generate the champion card."
+      : "Complete Season 2 and generate the champion card.";
+    // No card, not completed — default label for new users
+    if (actionBtn) actionBtn.textContent = "Generate / Open Card";
   }
 }
 
-const mustCreate = document.body.getAttribute("data-require-profile") === "1";
-if (mustCreate && !getProfile()){
-  openProfileModal(true);
+function applySeasonPickerUI(){
+  // Only S1 and S2 have progress on the season picker right now
+  ["s1","s2"].forEach(seasonId => {
+    const pct = seasonProgressPct(seasonId);
+    const fill = document.querySelector(`[data-season-progress="${seasonId}"]`);
+    const label = document.querySelector(`[data-season-progress-label="${seasonId}"]`);
+    const progWrap = fill ? fill.closest(".miniProg") : null;
+    if (fill) fill.style.width = `${pct}%`;
+    if (label) label.textContent = `${pct}%`;
+
+    const btn = document.querySelector(`[data-season="${seasonId}"]`);
+    if (btn){
+      const hasProg = seasonHasAnyProgress(seasonId);
+      const open = seasonAllQuizzesDone(seasonId) && seasonChampionReady(seasonId);
+      btn.textContent = open ? "Open" : (hasProg ? "Continue" : "Start");
+      btn.disabled = false;
+
+      // Progress bar rules:
+      // - Hidden until user answers at least 1 question in any quiz
+      // - Visible while progressing / completed quizzes
+      // - Hidden again once Champion card is generated (Open state)
+      if (progWrap){
+        progWrap.style.display = (hasProg && !open) ? "block" : "none";
+      }
+      if (label){
+        label.style.display = (hasProg && !open) ? "block" : "none";
+      }
+    }
+
+    // last played hint (S1/S2 only)
+    const last = localStorage.getItem(`mb_last_${seasonId}`);
+    const lastEl = document.querySelector(`[data-season-last="${seasonId}"]`);
+    if (lastEl){
+      if (last){
+        lastEl.style.display = "block";
+        lastEl.textContent = `Last played: ${last}`;
+      } else {
+        lastEl.style.display = "none";
+        lastEl.textContent = "";
+      }
+    }
+  });
+
+  // S3 stays disabled (and no progress/last played)
+  const s3Btn = document.querySelector('[data-season="s3"]');
+  if (s3Btn){
+    s3Btn.textContent = "Coming soon";
+    s3Btn.disabled = true;
+  }
 }
 
-/* ===== Rewards Modal (Home) ===== */
-(function initRewardsModal(){
-  const rewardsBtn = document.getElementById("rewardsBtn");
+
+document.addEventListener("DOMContentLoaded", () => {
+  forcePlayAll(".bg__video");
+  forcePlayAll(".brand__logo");
+
+  renderTopProfile();
+  initProfileModal();
+  initSeasonButtons();
+  ensureDeviceIdInProfile();
+
+  // Achievements on Season picker: show ONLY Champion cards per season
+  initAchievementsModal();
+
+  
+  updateSeasonCompletedBadges();
+  applySeasonPickerUI();
+  renderHomeChampionCards();
+
+  // keep UI in sync across tabs
+  window.addEventListener("storage", () => {
+    renderTopProfile();
+    updateSeasonCompletedBadges();
+    applySeasonPickerUI();
+    renderHomeChampionCards();
+  });
+
+  const pill = document.getElementById("profilePill");
+  if (pill) pill.addEventListener("click", () => openProfileModal(false));
+
+  const mustCreate = document.body.getAttribute("data-require-profile") === "1";
+  if (mustCreate && !getProfile()){
+    openProfileModal(true);
+  }
+});
+
+/* =========================
+   Achievements modal (ROOT)
+   - Only Champion cards (S1 ready if generated)
+   - S2/S3 placeholders for now
+========================= */
+function initAchievementsModal(){
+  const btn = document.getElementById("achievementsBtn");
   const modal = document.getElementById("rewardsModal");
   const closeBtn = document.getElementById("rewardsCloseBtn");
   const grid = document.getElementById("rewardsGrid");
 
-  if (!rewardsBtn || !modal || !closeBtn || !grid) return;
+  if (!btn || !modal || !closeBtn || !grid) return;
 
-  const REWARD_KEYS = {
-    songPng: "mb_prev_song",
-    moviePng: "mb_prev_movie",
-    magicPng: "mb_prev_magicblock",
-  };
-
-  const items = [
+  const SEASONS = [
     {
-      key: "song",
-      title: "Quiz 1 — Song",
-      sub: "Guess the Song by the Melody",
-      doneKey: MB_KEYS.doneSong,
-      progKey: MB_KEYS.progSong,
-      pngKey: REWARD_KEYS.songPng,
-      openHref: "quizzes/song.html"
+      id: "s1",
+      title: "Season 1 — Champion Card",
+      subLocked: "Complete Season 1 to unlock",
+      pngKey: "mb_champ_png",
+      readyKey: "mb_champ_ready",
+      indexHref: "seasons/s1/index.html",
+      championHref: "seasons/s1/champion.html",
+      active: true,
     },
     {
-      key: "movie",
-      title: "Quiz 2 — Movie",
-      sub: "Guess the Movie by the Frame",
-      doneKey: MB_KEYS.doneMovie,
-      progKey: MB_KEYS.progMovie,
-      pngKey: REWARD_KEYS.moviePng,
-      openHref: "quizzes/movie.html"
+      id: "s2",
+      title: "Season 2 — Champion Card",
+      subLocked: "Complete Season 2 to unlock",
+      pngKey: "mb_s2_champ_png",
+      readyKey: "mb_s2_champ_ready",
+      indexHref: "seasons/s2/index.html",
+      championHref: "seasons/s2/champion.html",
+      active: true,
     },
     {
-      key: "magicblock",
-      title: "Quiz 3 — MagicBlock",
-      sub: "How well do you know MagicBlock?",
-      doneKey: MB_KEYS.doneMagic,
-      progKey: MB_KEYS.progMagic,
-      pngKey: REWARD_KEYS.magicPng,
-      openHref: "quizzes/magicblock.html"
+      id: "s3",
+      title: "Season 3 — Champion Card",
+      subLocked: "Not available yet",
+      pngKey: "mb_champ_png_s3",
+      readyKey: "mb_champ_ready_s3",
+      indexHref: "#",
+      championHref: "#",
+      active: false,
     },
-    {
-      key: "champion",
-      title: "Champion Card",
-      sub: "Unlocked after all 3 quizzes",
-      doneKey: null,
-      progKey: null,
-      pngKey: MB_KEYS.champPng,
-      openHref: "champion.html"
-    }
   ];
 
-  function open(){
-    render();
-    modal.classList.add("isOpen");
-  }
-  function close(){
-    modal.classList.remove("isOpen");
-  }
+const HASH = "#achievements";
+function setHash(){
+  try {
+    if (location.hash !== HASH) history.replaceState(null, "", location.pathname + location.search + HASH);
+  } catch {}
+}
+function clearHash(){
+  try {
+    if (location.hash === HASH) history.replaceState(null, "", location.pathname + location.search);
+  } catch {}
+}
 
-  rewardsBtn.addEventListener("click", open);
+function open(){ render(); modal.classList.add("isOpen"); setHash(); }
+function close(){ modal.classList.remove("isOpen"); clearHash(); }
+
+  btn.addEventListener("click", open);
   closeBtn.addEventListener("click", close);
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) close();
-  });
+  modal.addEventListener("click", (e) => { if (e.target === modal) close(); });
 
-  function isDoneLocal(key){
-    return key ? localStorage.getItem(key) === "1" : false;
-  }
+// Deep-link support: index.html#achievements should open this modal.
+if (location.hash === HASH) open();
+window.addEventListener("hashchange", () => {
+  if (location.hash === HASH) open();
+  else if (modal.classList.contains("isOpen")) close();
+});
 
   function render(){
     grid.innerHTML = "";
 
-    const allDone =
-      isDoneLocal(MB_KEYS.doneSong) &&
-      isDoneLocal(MB_KEYS.doneMovie) &&
-      isDoneLocal(MB_KEYS.doneMagic);
-
-    items.forEach(it => {
-      const png = localStorage.getItem(it.pngKey || "");
-      const hasPng = !!(png && png.startsWith("data:image/"));
-      const done = it.doneKey ? isDoneLocal(it.doneKey) : null;
-
-      if (it.key === "song" && done) clearProgressForQuiz("song");
-      if (it.key === "movie" && done) clearProgressForQuiz("movie");
-      if (it.key === "magicblock" && done) clearProgressForQuiz("magicblock");
-
-      const nextQ = it.progKey ? getProgNum(it.progKey) : 0;
-      const hasProg = !done && nextQ >= 2;
-
-      const isChampion = it.key === "champion";
+    SEASONS.forEach((it) => {
+      const png = localStorage.getItem(it.pngKey) || "";
+      const ready = localStorage.getItem(it.readyKey) === "1";
+      const hasPng = png.startsWith("data:image/");
 
       const card = document.createElement("div");
       card.className = "rewardCard";
 
       const thumb = document.createElement("div");
       thumb.className = "rewardThumb";
-
       if (hasPng){
         const img = document.createElement("img");
         img.alt = it.title;
         img.src = png;
         thumb.appendChild(img);
       } else {
-        if (isChampion && !allDone) thumb.textContent = "Locked 🔒";
-        else thumb.textContent = "Not generated";
+        thumb.textContent = it.active ? "Not generated" : "Coming soon";
       }
 
       const meta = document.createElement("div");
@@ -572,65 +621,60 @@ if (mustCreate && !getProfile()){
 
       const s = document.createElement("div");
       s.className = "rewardSub";
+      const allDone = it.active ? seasonAllQuizzesDone(it.id) : false;
+      if (!it.active) s.textContent = "Not available yet";
+      else if (hasPng) s.textContent = "Generated ✅";
+      else if (allDone) s.textContent = "Ready to generate ✅";
+      else s.textContent = it.subLocked;
 
-      if (isChampion){
-        s.textContent = allDone
-          ? (hasPng ? "Ready ✅" : "Unlocked ✅ (generate on Champion page)")
-          : "Locked (complete all quizzes)";
-      } else {
-        if (done) s.textContent = hasPng ? "Ready ✅" : "Completed ✅ (generate card inside quiz)";
-        else if (hasProg) s.textContent = `In progress — Q${nextQ - 1} / 10`;
-        else s.textContent = "Not completed";
+      let prog = null;
+      if (it.active){
+        const pct = seasonProgressPct(it.id);
+        prog = document.createElement("div");
+        prog.className = "miniProg";
+        prog.innerHTML = `
+          <div class="miniProg__bar"><div class="miniProg__fill" style="width:${pct}%"></div></div>
+          <div class="miniProg__text">${pct}%</div>
+        `;
       }
+
 
       const actions = document.createElement("div");
       actions.className = "rewardActions";
 
       const openBtn = document.createElement("button");
       openBtn.className = "btn";
-
-      if (isChampion){
-        openBtn.textContent = allDone ? "Open Champion" : "Locked";
-        openBtn.disabled = !allDone;
+      if (!it.active){
+        openBtn.textContent = "Coming soon";
+        openBtn.disabled = true;
       } else {
-        if (done) openBtn.textContent = "Open quiz";
-        else openBtn.textContent = hasProg ? "Continue" : "Start";
+        const hasProg = seasonHasAnyProgress(it.id);
+        openBtn.textContent = allDone ? (hasPng ? "Open" : "Generate") : (hasProg ? "Continue" : "Start");
       }
 
       openBtn.addEventListener("click", () => {
-        if (isChampion && !allDone) return;
-        location.href = it.openHref;
+        if (!it.active) return;
+        location.href = allDone ? it.championHref : it.indexHref;
       });
-
       actions.appendChild(openBtn);
 
       if (hasPng){
         const dl = document.createElement("button");
         dl.className = "btn btn--ghost";
         dl.textContent = "Download";
-        dl.addEventListener("click", () => downloadDataUrl(png, filenameFor(it.key, png)));
+        dl.addEventListener("click", () => downloadDataUrl(png, `magicblock-${it.id}-champion-card.png`));
         actions.appendChild(dl);
       }
 
       meta.appendChild(t);
       meta.appendChild(s);
+      if (it.active && prog) meta.appendChild(prog);
       meta.appendChild(actions);
 
       card.appendChild(thumb);
       card.appendChild(meta);
-
       grid.appendChild(card);
     });
-  }
-
-  function filenameFor(key, dataUrl){
-    const isJpg = (dataUrl || "").startsWith("data:image/jpeg");
-    const ext = isJpg ? "jpg" : "png";
-
-    if (key === "song") return `magicblock-song-result.${ext}`;
-    if (key === "movie") return `magicblock-movie-result.${ext}`;
-    if (key === "magicblock") return `magicblock-knowledge-result.${ext}`;
-    return `magicblock-champion-card.${ext}`;
   }
 
   function downloadDataUrl(dataUrl, filename){
@@ -639,4 +683,5 @@ if (mustCreate && !getProfile()){
     a.href = dataUrl;
     a.click();
   }
-})();
+}
+

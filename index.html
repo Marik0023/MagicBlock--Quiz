@@ -4,14 +4,23 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MagicBlock Quiz</title>
-  <link rel="icon" href="/assets/faviconlogo/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/faviconlogo/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/assets/faviconlogo/favicon-16x16.png">
-  <link rel="apple-touch-icon" href="/assets/faviconlogo/apple-touch-icon.png">
-  <link rel="manifest" href="/assets/faviconlogo/site.webmanifest">
+
+  <link rel="icon" href="assets/faviconlogo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/faviconlogo/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/faviconlogo/favicon-16x16.png">
+  <link rel="apple-touch-icon" href="assets/faviconlogo/apple-touch-icon.png">
+  <link rel="manifest" href="assets/faviconlogo/site.webmanifest">
   <meta name="theme-color" content="#0b0b0f">
-  <link rel="stylesheet" href="styles.css?v=20260203" />
-  <script src="app.js?v=20260203" defer></script>
+
+  <link rel="stylesheet" href="styles.css?v=20260211" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="./assets/js/supabase-config.js" defer></script>
+  <script src="./assets/js/leaderboard-client.js?v=20260219b" defer></script>
+  <script src="app.js?v=20260211" defer></script>
+
+<link rel="stylesheet" href="assets/topbar.css" />
+  <script src="assets/js/topbar.js" defer></script>
+
 </head>
 
 <body data-require-profile="1">
@@ -24,134 +33,113 @@
     <div class="bg__grain"></div>
   </div>
 
-  <!-- Topbar -->
-  <div class="topbar">
-    <div class="topbar__inner">
-      <a class="brand" href="index.html" aria-label="Home">
-        <video class="brand__logo" autoplay muted loop playsinline>
-          <source src="assets/logo.webm" type="video/webm" />
-        </video>
-      </a>
-
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button id="rewardsBtn" class="btn btn--ghost">Achievements</button>
-
-        <div id="profilePill" class="profilePill" title="Profile">
-          <div class="profilePill__avatar"><img alt="" /></div>
-          <div>
-            <div class="profilePill__name" data-profile-name>Player</div>
-            <div class="profilePill__hint" data-profile-hint>Click to set</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <main class="container">
     <section class="hero">
-      <h1>Pick a quiz</h1>
-      <p>Each quiz can be completed once, good luck</p>
+      <h1>Choose a season</h1>
+      <p class="hero__cta">Start any season → finish quizzes → unlock your Champion Card</p>
+<p>Your profile is shared across all seasons</p>
     </section>
 
     <section class="quizGrid">
-      <!-- Quiz 1 -->
+      <!-- Season 1 -->
       <article class="quizCard">
-        <div class="badgeDone" data-badge="song" style="display:none;">✓ Completed</div>
+        <div class="badgeDone" data-season-badge="s1" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <img src="assets/tiles/song.png" alt="Song quiz cover" />
+            <img src="assets/tiles/season1.png" alt="Season 1 cover" />
           </div>
-          <div class="quizCard__meta">QUIZ 1</div>
-          <div class="quizCard__title">Guess the Song by the Melody</div>
-          <p class="quizCard__desc">Listen to a short melody and choose the correct song</p>
+          <div class="quizCard__meta">SEASON 1</div>
+          <div class="quizCard__title">Quizzes</div>
+          <p class="quizCard__desc">The original 3 quizzes + Champion card</p>
 
           <div class="quizCard__footer">
-            <button class="btn" data-start="song">Start</button>
-
-            <!-- ✅ progress (shows only if mb_prog_song >= 1) -->
-            <div class="miniProg" data-prog="song" style="display:none;">
-              <div class="miniProg__bar">
-                <div class="miniProg__fill" style="width:0%"></div>
-              </div>
-              <div class="miniProg__text">0%</div>
+            <div class="miniProg">
+              <div class="miniProg__bar"><div class="miniProg__fill" data-season-progress="s1"></div></div>
+              <div class="miniProg__text" data-season-progress-label="s1">0%</div>
             </div>
+            <button class="btn" data-season="s1">Start</button>
+            <div class="miniLast" data-season-last="s1" style="display:none;"></div>
           </div>
         </div>
       </article>
 
-      <!-- Quiz 2 -->
+      <!-- Season 2 -->
       <article class="quizCard">
-        <div class="badgeDone" data-badge="movie" style="display:none;">✓ Completed</div>
+        <div class="badgeDone" data-season-badge="s2" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <img src="assets/tiles/cinema.png" alt="Movie quiz cover" />
+            <img src="assets/tiles/season2.png" alt="Season 2 cover" />
           </div>
-          <div class="quizCard__meta">QUIZ 2</div>
-          <div class="quizCard__title">Guess the Movie by the Frame</div>
-          <p class="quizCard__desc">Look at a frame and pick the correct movie</p>
+          <div class="quizCard__meta">SEASON 2</div>
+          <div class="quizCard__title">Quizzes</div>
+          <p class="quizCard__desc">6 quizzes (vs 3 in Season 1) + Champion card. Jump in and start collecting cards</p>
 
           <div class="quizCard__footer">
-            <button class="btn" data-start="movie">Start</button>
-
-            <!-- ✅ progress (shows only if mb_prog_movie >= 1) -->
-            <div class="miniProg" data-prog="movie" style="display:none;">
-              <div class="miniProg__bar">
-                <div class="miniProg__fill" style="width:0%"></div>
-              </div>
-              <div class="miniProg__text">0%</div>
+            <div class="miniProg">
+              <div class="miniProg__bar"><div class="miniProg__fill" data-season-progress="s2"></div></div>
+              <div class="miniProg__text" data-season-progress-label="s2">0%</div>
             </div>
+                        <button class="btn" data-season="s2">Start</button>
+            <div class="miniLast" data-season-last="s2" style="display:none;"></div>
           </div>
         </div>
       </article>
 
-      <!-- Quiz 3 -->
+      <!-- Season 3 -->
       <article class="quizCard">
-        <div class="badgeDone" data-badge="magicblock" style="display:none;">✓ Completed</div>
+        <div class="badgeDone" data-season-badge="s3" style="display:none;">✓ Completed</div>
         <div class="quizCard__inner">
           <div class="quizCard__media">
-            <img src="assets/tiles/learn.png" alt="MagicBlock quiz cover" />
+            <img src="assets/tiles/season3.png" alt="Season 3 cover" />
           </div>
-          <div class="quizCard__meta">QUIZ 3</div>
-          <div class="quizCard__title">How well do you know MagicBlock?</div>
-          <p class="quizCard__desc">10 questions about MagicBlock — pick A/B/C/D</p>
+          <div class="quizCard__meta">SEASON 3</div>
+          <div class="quizCard__title">Coming soon</div>
+          <p class="quizCard__desc">Coming soon</p>
 
           <div class="quizCard__footer">
-            <button class="btn" data-start="magicblock">Start</button>
-
-            <!-- ✅ progress (shows only if mb_prog_magicblock >= 1) -->
-            <div class="miniProg" data-prog="magicblock" style="display:none;">
-              <div class="miniProg__bar">
-                <div class="miniProg__fill" style="width:0%"></div>
-              </div>
-              <div class="miniProg__text">0%</div>
-            </div>
+            <button class="btn" data-season="s3" disabled>Coming soon</button>
           </div>
         </div>
       </article>
     </section>
 
-    <!-- Champion -->
-    <section id="championWrap" class="champion" style="display:none;">
-      <div class="champion__inner">
-        <!-- LEFT -->
-        <div class="champion__left">
-          <div class="champion__title">Champion Card</div>
-          <p class="champion__desc">Congratulations on completing all 3 quests — your final Card is ready</p>
 
-          <button id="openChampionBtn" class="btn">Generate Champion Card</button>
+    <section class="homeChampions" id="homeChampions" aria-labelledby="homeChampionsTitle">
+      <div class="homeChampions__head">
+        <h2 id="homeChampionsTitle">Champion Cards</h2>
+        <p>Cards from Season 1 and Season 2. Old Season 1 players can regenerate the card to sync to leaderboard.</p>
+      </div>
 
-          <!-- ✅ hint (shows only after PNG exists) -->
-          <div id="championHint" class="champion__hint" style="display:none;">
-            Success! Your Champion Card is now ready ✅
+      <div class="homeChampions__grid">
+        <article class="homeChampCard" data-home-champ="s1">
+          <div class="homeChampCard__top">
+            <span class="homeChampCard__season">Season 1</span>
+            <span class="homeChampCard__status" id="homeChampStatusS1">No card yet</span>
           </div>
-        </div>
-
-        <!-- RIGHT: preview (shows only after PNG exists) -->
-        <div id="championPreview" class="championPreview" style="display:none;">
-          <div class="cardPreview">
-            <img id="championPreviewImg" alt="Champion preview" />
+          <div class="homeChampCard__preview" id="homeChampPreviewS1">
+            <div class="homeChampCard__placeholder">No Season 1 champion card</div>
           </div>
-        </div>
+          <p class="homeChampCard__hint" id="homeChampHintS1">Complete Season 1 and generate a champion card.</p>
+          <div class="homeChampCard__actions">
+            <a class="btn btn--ghost" href="./seasons/s1/index.html">Open Season 1</a>
+            <a class="btn" href="./seasons/s1/champion.html" id="homeChampActionS1">Generate / Open Card</a>
+          </div>
+        </article>
+
+        <article class="homeChampCard" data-home-champ="s2">
+          <div class="homeChampCard__top">
+            <span class="homeChampCard__season">Season 2</span>
+            <span class="homeChampCard__status" id="homeChampStatusS2">No card yet</span>
+          </div>
+          <div class="homeChampCard__preview" id="homeChampPreviewS2">
+            <div class="homeChampCard__placeholder">No Season 2 champion card</div>
+          </div>
+          <p class="homeChampCard__hint" id="homeChampHintS2">Complete Season 2 and generate a champion card.</p>
+          <div class="homeChampCard__actions">
+            <a class="btn btn--ghost" href="./seasons/s2/index.html">Open Season 2</a>
+            <a class="btn" href="./seasons/s2/champion.html">Open Champion Card</a>
+          </div>
+        </article>
       </div>
     </section>
 
@@ -164,7 +152,7 @@
       <div class="modalCard__head">
         <div>
           <h2 class="modalCard__title">Create your profile</h2>
-          <p class="modalCard__sub">This will appear on your result cards.</p>
+          <p class="modalCard__sub">This will appear on your result cards</p>
         </div>
         <button id="profileCloseBtn" class="modalClose" aria-label="Close">×</button>
       </div>
@@ -179,7 +167,7 @@
 
           <div class="field">
             <input id="profileName" class="input" placeholder="Enter your name" />
-            <div class="help">Tip: you can click your profile later to change it.</div>
+            <div class="help">Tip: you can click your profile later to change it</div>
 
             <div class="btnRow">
               <button id="profileSaveBtn" class="btn">Start</button>
@@ -191,15 +179,15 @@
     </div>
   </div>
 
-  <!-- Rewards Modal -->
+  <!-- Achievements Modal (Champion cards only) -->
   <div id="rewardsModal" class="modal" aria-hidden="true">
     <div class="modalCard">
       <div class="modalCard__head">
         <div>
-          <h2 class="modalCard__title">Your Achievements</h2>
-          <p class="modalCard__sub">Quiz cards + Champion card.</p>
+          <h2 class="modalCard__title">Champion Cards</h2>
+          <p class="modalCard__sub">One Champion card per season</p>
         </div>
-        <button id="rewardsCloseBtn" class="modalClose" aria-label="Close">×</button>
+        <button id="rewardsCloseBtn" class="modalClose" aria-label="Close" type="button">×</button>
       </div>
 
       <div class="modalCard__body">
@@ -207,5 +195,19 @@
       </div>
     </div>
   </div>
+
+  <footer class="mbFooter">
+    <div class="mbFooter__inner">
+      <div class="mbFooter__left">powered by markiian_</div>
+      <div class="mbFooter__right">
+        <div class="mbFooter__linksTitle">MagicBlock Official Links</div>
+        <nav class="mbFooter__links" aria-label="MagicBlock social links">
+          <a class="mbFooter__link" data-site="x" href="https://x.com/magicblock" target="_blank" rel="noopener noreferrer">X</a>
+          <a class="mbFooter__link" data-site="discord" href="https://discord.com/invite/MBkdC3gxcv" target="_blank" rel="noopener noreferrer">Discord</a>
+          <a class="mbFooter__link" data-site="youtube" href="https://www.youtube.com/@Magicblock-Labs" target="_blank" rel="noopener noreferrer">YouTube</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
