@@ -23,7 +23,7 @@ body{
   color:var(--text);
   background: var(--bg);
   overflow-x:hidden;
-  padding-bottom: 88px;
+  padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px));
 }
 
 
@@ -245,7 +245,7 @@ img{max-width:100%; display:block}
   gap: 10px;
 }
 
-/* щоб бар був нормальною шириною під кнопкою */
+/* С‰РѕР± Р±Р°СЂ Р±СѓРІ РЅРѕСЂРјР°Р»СЊРЅРѕСЋ С€РёСЂРёРЅРѕСЋ РїС–Рґ РєРЅРѕРїРєРѕСЋ */
 .quizCard__footer .miniProg{
   width: 100%;
 }
@@ -763,14 +763,14 @@ img{max-width:100%; display:block}
    QUIZ RESULT CARD PREVIEW (NO panel behind, NO shine halo)
 ========================================================= */
 
-/* IMPORTANT: прибираємо панель/рамку позаду (це був .cardZone) */
+/* IMPORTANT: РїСЂРёР±РёСЂР°С”РјРѕ РїР°РЅРµР»СЊ/СЂР°РјРєСѓ РїРѕР·Р°РґСѓ (С†Рµ Р±СѓРІ .cardZone) */
 body.mbQuiz #cardZone.cardZone{
   background: transparent !important;
   border: 0 !important;
   padding: 0 !important;
 }
 
-/* сам preview — менший і без чорного фону/бордера */
+/* СЃР°Рј preview вЂ” РјРµРЅС€РёР№ С– Р±РµР· С‡РѕСЂРЅРѕРіРѕ С„РѕРЅСѓ/Р±РѕСЂРґРµСЂР° */
 body.mbQuiz #cardZone .cardPreview{
   width: min(520px, 100%);
   margin: 0 auto;
@@ -778,7 +778,7 @@ body.mbQuiz #cardZone .cardPreview{
   background: transparent !important;
   border: 0 !important;
 
-  /* тінь тільки для прев’ю на сторінці */
+  /* С‚С–РЅСЊ С‚С–Р»СЊРєРё РґР»СЏ РїСЂРµРІвЂ™СЋ РЅР° СЃС‚РѕСЂС–РЅС†С– */
   box-shadow: 0 18px 60px rgba(0,0,0,.55);
 
   border-radius: 28px;
@@ -796,7 +796,7 @@ body.mbQuiz #cardZone .cardPreview canvas{
   border-radius: 28px;
 }
 
-/* вимикаємо champion-shine для quiz preview (бо він виглядав як “рамка/ореол”) */
+/* РІРёРјРёРєР°С”РјРѕ champion-shine РґР»СЏ quiz preview (Р±Рѕ РІС–РЅ РІРёРіР»СЏРґР°РІ СЏРє вЂњСЂР°РјРєР°/РѕСЂРµРѕР»вЂќ) */
 body.mbQuiz #cardZone.isOpen .cardPreview::before,
 body.mbQuiz #cardZone.isOpen .cardPreview::after{
   animation: none !important;
@@ -1059,7 +1059,7 @@ body.mbQuiz .cardActions{
   color: rgba(255,255,255,.80);
 }
 
-/* ===== VINYL (Song quiz) — smooth via JS (no CSS animation) ===== */
+/* ===== VINYL (Song quiz) вЂ” smooth via JS (no CSS animation) ===== */
 .mbQuiz .mbPlayer__cover{
   width: 112px;   
   height: 112px;
@@ -1071,7 +1071,7 @@ body.mbQuiz .cardActions{
   border-radius: 999px;
 }
 
-/* сам диск */
+/* СЃР°Рј РґРёСЃРє */
 .vinyl{
   width: 100%;
   height: 100%;
@@ -1082,11 +1082,11 @@ body.mbQuiz .cardActions{
   transform: rotate(0deg);
   will-change: transform;
 
-  /* легка “живість” */
+  /* Р»РµРіРєР° вЂњР¶РёРІС–СЃС‚СЊвЂќ */
   filter: drop-shadow(0 16px 30px rgba(0,0,0,.55));
 }
 
-/* під час програвання вимикаємо transition (JS крутить кожен кадр) */
+/* РїС–Рґ С‡Р°СЃ РїСЂРѕРіСЂР°РІР°РЅРЅСЏ РІРёРјРёРєР°С”РјРѕ transition (JS РєСЂСѓС‚РёС‚СЊ РєРѕР¶РµРЅ РєР°РґСЂ) */
 .vinyl.isPlaying{
   transition: none;
 }
@@ -1114,7 +1114,7 @@ body.mbQuiz .cardActions{
 }
 
 /* =========================================================
-   Movie quiz — Custom Play Overlay
+   Movie quiz вЂ” Custom Play Overlay
 ========================================================= */
 
 .mbQuiz .mbVideoWrap{
@@ -1175,7 +1175,7 @@ body.mbQuiz .cardActions{
 
 /* play icon */
 .mbQuiz .videoPlayBtn img{
-  width: 56px;   /* змінюй якщо треба */
+  width: 56px;   /* Р·РјС–РЅСЋР№ СЏРєС‰Рѕ С‚СЂРµР±Р° */
   height: 56px;
   display: block;
 
@@ -1209,20 +1209,20 @@ body.mbQuiz .cardActions{
 
 /* ===== Song quiz: center (player + answers) vertically inside panel ===== */
 .mbQuiz #quizPanel .quizLayout{
-  align-items: center; /* вертикально по центру */
+  align-items: center; /* РІРµСЂС‚РёРєР°Р»СЊРЅРѕ РїРѕ С†РµРЅС‚СЂСѓ */
 }
 
-/* прибираємо “фейковий” заголовок справа, який зсуває варіанти вниз */
+/* РїСЂРёР±РёСЂР°С”РјРѕ вЂњС„РµР№РєРѕРІРёР№вЂќ Р·Р°РіРѕР»РѕРІРѕРє СЃРїСЂР°РІР°, СЏРєРёР№ Р·СЃСѓРІР°С” РІР°СЂС–Р°РЅС‚Рё РІРЅРёР· */
 .mbQuiz #quizPanel .ghostTitle{
   display: none;
 }
 
-/* щоб права колонка не мала зайвого top-space (на всякий) */
+/* С‰РѕР± РїСЂР°РІР° РєРѕР»РѕРЅРєР° РЅРµ РјР°Р»Р° Р·Р°Р№РІРѕРіРѕ top-space (РЅР° РІСЃСЏРєРёР№) */
 .mbQuiz #quizPanel .quizLayout > div:last-child{
   margin-top: 0;
 }
 
-/* qTitle зверху зліва (коли ти виніс його над quizLayout) */
+/* qTitle Р·РІРµСЂС…Сѓ Р·Р»С–РІР° (РєРѕР»Рё С‚Рё РІРёРЅС–СЃ Р№РѕРіРѕ РЅР°Рґ quizLayout) */
 .mbQuiz #quizPanel .questionTitle--top{
   margin: 0 0 14px 0;
 }
@@ -1255,10 +1255,10 @@ body.mbQuiz .cardActions{
   gap: 12px;
 }
 
-/* один рядок */
+/* РѕРґРёРЅ СЂСЏРґРѕРє */
 .mbQuiz .reviewItem{
   display: grid;
-  grid-template-columns: 140px 1fr; /* ✅ рівний лівий бейдж */
+  grid-template-columns: 140px 1fr; /* вњ… СЂС–РІРЅРёР№ Р»С–РІРёР№ Р±РµР№РґР¶ */
   gap: 14px;
   align-items: center;
 
@@ -1268,13 +1268,13 @@ body.mbQuiz .cardActions{
   background: rgba(255,255,255,.06);
 }
 
-/* лівий "pill" */
+/* Р»С–РІРёР№ "pill" */
 .mbQuiz .reviewQ{
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
-  width: 140px;        /* ✅ фіксована ширина = рівно як у movie */
+  width: 140px;        /* вњ… С„С–РєСЃРѕРІР°РЅР° С€РёСЂРёРЅР° = СЂС–РІРЅРѕ СЏРє Сѓ movie */
   height: 36px;
 
   border-radius: 999px;
@@ -1289,7 +1289,7 @@ body.mbQuiz .cardActions{
   white-space: nowrap;
 }
 
-/* правильна відповідь */
+/* РїСЂР°РІРёР»СЊРЅР° РІС–РґРїРѕРІС–РґСЊ */
 .mbQuiz .reviewA{
   font-weight: 900;
   font-size: 14px;
@@ -1297,7 +1297,7 @@ body.mbQuiz .cardActions{
   color: rgba(255,255,255,.92);
 }
 
-/* текст питання під відповіддю (якщо будеш додавати) */
+/* С‚РµРєСЃС‚ РїРёС‚Р°РЅРЅСЏ РїС–Рґ РІС–РґРїРѕРІС–РґРґСЋ (СЏРєС‰Рѕ Р±СѓРґРµС€ РґРѕРґР°РІР°С‚Рё) */
 .mbQuiz .reviewHint{
   margin-top: 6px;
   font-size: 13px;
@@ -1312,7 +1312,7 @@ body.mbQuiz .cardActions{
   pointer-events: none;
 }
 
-/* реально прибрати місце */
+/* СЂРµР°Р»СЊРЅРѕ РїСЂРёР±СЂР°С‚Рё РјС–СЃС†Рµ */
 .mbQuiz .reviewBox.isGone{
   display: none !important;
 }
@@ -1324,9 +1324,9 @@ body.mbQuiz .cardActions{
     align-items: start;
   }
   .mbQuiz .reviewQ{
-    width: fit-content;     /* ✅ на мобілці не тягнемо на всю ширину */
+    width: fit-content;     /* вњ… РЅР° РјРѕР±С–Р»С†С– РЅРµ С‚СЏРіРЅРµРјРѕ РЅР° РІСЃСЋ С€РёСЂРёРЅСѓ */
     justify-content: flex-start;
-    padding: 0 12px;        /* ✅ щоб pill виглядав норм */
+    padding: 0 12px;        /* вњ… С‰РѕР± pill РІРёРіР»СЏРґР°РІ РЅРѕСЂРј */
   }
 }
 
@@ -1452,74 +1452,62 @@ body.mbQuiz .cardActions{
 
 /* ===== Global Footer (MagicBlock links) ===== */
 /* ============================================================
-   FOOTER — redesigned
+   FOOTER вЂ” flat bottom bar (horizontal separator on top)
    ============================================================ */
 .mbFooter{
   position: fixed;
-  bottom: 0;
   left: 0;
   right: 0;
+  bottom: 0;
   z-index: 100;
-  padding: 0 8px 8px;
+  padding: 0;
+
+  /* horizontal line separating footer from content (seasons/cards) */
+  border-top: 1px solid rgba(255,255,255,.10);
+
+  background: linear-gradient(
+    to top,
+    rgba(6,7,11,.90) 0%,
+    rgba(6,7,11,.74) 58%,
+    rgba(6,7,11,.42) 100%
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 -10px 30px rgba(0,0,0,.22);
 }
 
 .mbFooter__inner{
   position: relative;
-  overflow: hidden;
-  width: 100%;
-  max-width: none;
+  width: min(1120px, 92vw);
   margin: 0 auto;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
 
   min-height: 64px;
-  padding: 16px 28px;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
 
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,.07);
-
-  background:
-    linear-gradient(
-      105deg,
-      rgba(130,80,255,.08) 0%,
-      rgba(255,255,255,.03) 45%,
-      rgba(80,180,255,.06) 100%
-    );
-
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-
-  box-shadow:
-    0 1px 0 rgba(255,255,255,.06) inset,
-    0 -1px 0 rgba(0,0,0,.25) inset,
-    0 12px 40px rgba(0,0,0,.30);
+  /* remove floating rounded rectangle */
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
 }
 
-/* subtle top shimmer line */
+/* disable old shimmer line from inner rectangle */
 .mbFooter__inner::before{
-  content: '';
-  position: absolute;
-  inset: 0;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,.18) 30%,
-    rgba(160,100,255,.22) 60%,
-    transparent 100%
-  );
-  pointer-events: none;
+  display: none !important;
+  content: none !important;
 }
 
 .mbFooter__left{
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(255,255,255,.38);
+  color: rgba(255,255,255,.40);
   font-size: 11px;
   font-weight: 500;
   letter-spacing: .06em;
@@ -1542,12 +1530,18 @@ body.mbQuiz .cardActions{
 .mbFooter__right{
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
   margin-left: auto;
 }
 
+/* no vertical divider anymore */
+.mbFooter__right::before{
+  display: none !important;
+  content: none !important;
+}
+
 .mbFooter__linksTitle{
-  color: rgba(255,255,255,.32);
+  color: rgba(255,255,255,.34);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: .18em;
@@ -1568,52 +1562,55 @@ body.mbQuiz .cardActions{
   gap: 6px;
 
   height: 34px;
-  padding: 0 16px;
+  padding: 0 14px;
 
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.09);
-  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.035);
 
-  color: rgba(255,255,255,.72);
+  color: rgba(255,255,255,.74);
   font-weight: 700;
   font-size: 12px;
   letter-spacing: .04em;
   text-decoration: none;
 
   transition:
-    transform .18s cubic-bezier(.34,1.56,.64,1),
-    background .18s ease,
-    border-color .18s ease,
-    color .18s ease,
-    box-shadow .18s ease;
+    transform .16s ease,
+    background .16s ease,
+    border-color .16s ease,
+    color .16s ease,
+    box-shadow .16s ease;
 }
 
 .mbFooter__link:hover{
-  transform: translateY(-2px) scale(1.03);
-  background: rgba(160,100,255,.14);
-  border-color: rgba(160,100,255,.35);
-  color: rgba(255,255,255,.97);
-  box-shadow:
-    0 0 18px rgba(140,80,255,.18),
-    0 4px 12px rgba(0,0,0,.25);
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.16);
+  color: rgba(255,255,255,.95);
+  box-shadow: 0 6px 16px rgba(0,0,0,.20);
 }
 
 .mbFooter__link:active{
-  transform: translateY(0) scale(.98);
+  transform: translateY(0);
 }
 
 /* link icons via data attr */
-.mbFooter__link[data-site="x"]::before   { content: "𝕏"; font-size: 13px; }
-.mbFooter__link[data-site="discord"]::before { content: "◈"; font-size: 14px; opacity: .7; }
-.mbFooter__link[data-site="youtube"]::before { content: "▶"; font-size: 10px; opacity: .7; }
+.mbFooter__link[data-site="x"]::before   { content: "рќ•Џ"; font-size: 13px; }
+.mbFooter__link[data-site="discord"]::before { content: "в—€"; font-size: 14px; opacity: .7; }
+.mbFooter__link[data-site="youtube"]::before { content: "в–¶"; font-size: 10px; opacity: .7; }
 
 /* mobile */
 @media (max-width: 720px){
+  body{
+    padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+  }
+
   .mbFooter__inner{
+    min-height: auto;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
-    padding: 18px 20px;
+    gap: 10px;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
     text-align: center;
   }
 
@@ -1625,6 +1622,8 @@ body.mbQuiz .cardActions{
 
   .mbFooter__links{
     gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .mbFooter__link{
